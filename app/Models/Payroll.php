@@ -42,6 +42,8 @@ class Payroll extends Model
         'status',
         'paid_at',
         'paid_by',
+        'email_sent_at',
+        'email_sent_by',
         // Salary resolution audit
         'salary_resolution_mode',
         'salary_had_mid_change',
@@ -50,6 +52,7 @@ class Payroll extends Model
 
     protected $casts = [
         'paid_at'               => 'datetime',
+        'email_sent_at'         => 'datetime',
         'salary_had_mid_change' => 'boolean',
         'late_penalty_enabled'  => 'boolean',
         'leave_penalty_enabled' => 'boolean',
@@ -79,6 +82,11 @@ class Payroll extends Model
     public function paidBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    public function emailSentBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'email_sent_by');
     }
 
     public function salarySnapshot(): HasOne

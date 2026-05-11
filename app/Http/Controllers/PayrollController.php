@@ -68,7 +68,7 @@ class PayrollController extends Controller
     {
         $this->authorize('view', $payroll);
 
-        $payroll->load(['employee', 'paidBy']);
+        $payroll->load(['employee', 'paidBy', 'emailSentBy']);
         $overtimeEnabled = $payroll->overtime_enabled || $this->isOvertimeEnabled();
 
         return view('payroll.show', compact('payroll', 'overtimeEnabled'));
@@ -119,6 +119,15 @@ class PayrollController extends Controller
             ->with('success', 'Payroll marked as paid and locked.');
     }
 
+    public function sendMessage(Payroll $payroll)
+    {
+        $this->authorize('view', $payroll);
+
+        $this->payrollService->sendPayrollMessage($payroll, auth()->user());
+
+        return redirect()->back()->with('success', "Payroll message sent to {$payroll->employee->full_name}.");
+    }
+
     // POST /payroll/{payroll}/regenerate — delete draft and recalculate
     public function regenerate(Payroll $payroll)
     {
@@ -140,15 +149,33 @@ class PayrollController extends Controller
         $request->validate([
             'month' => ['required', 'integer', 'min:1', 'max:12'],
             'year'  => ['required', 'integer', 'min:2020'],
+            'payroll_ids' => ['nullable', 'array'],
+            'payroll_ids.*' => ['integer', 'exists:payrolls,id'],
         ]);
 
-        $count = $this->payrollService->bulkPay(
-            (int) $request->month,
-            (int) $request->year,
-            auth()->user()
-        );
+        $ids = $request->input('payroll_ids', []);
+        $count = $ids
+            ? $this->payrollService->bulkPaySelected($ids, auth()->user())
+            : $this->payrollService->bulkPay((int) $request->month, (int) $request->year, auth()->user());
 
         return redirect()->back()->with('success', "{$count} payroll(s) marked as paid.");
+    }
+
+    public function bulkSendMessages(Request $request)
+    {
+        $request->validate([
+            'month' => ['required', 'integer', 'min:1', 'max:12'],
+            'year'  => ['required', 'integer', 'min:2020'],
+            'payroll_ids' => ['nullable', 'array'],
+            'payroll_ids.*' => ['integer', 'exists:payrolls,id'],
+        ]);
+
+        $ids = $request->input('payroll_ids', []);
+        $count = $ids
+            ? $this->payrollService->bulkSendSelectedPayrollMessages($ids, auth()->user())
+            : $this->payrollService->bulkSendPayrollMessages((int) $request->month, (int) $request->year, auth()->user());
+
+        return redirect()->back()->with('success', "{$count} payroll message(s) sent.");
     }
 
     private function isOvertimeEnabled(): bool

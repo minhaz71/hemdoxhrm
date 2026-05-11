@@ -2,6 +2,12 @@
     <x-slot name="title">Salary History — {{ $employee->full_name }}</x-slot>
     <x-alert />
 
+    @php
+        $canApproveSalary = auth()->user()->can('approve', App\Models\SalaryHistory::class);
+        $deletableSalaryIds = $histories->filter(fn ($record) => auth()->user()->can('delete', $record))->pluck('id')->all();
+        $canManageSalaryActions = $canApproveSalary || count($deletableSalaryIds) > 0;
+    @endphp
+
     {{-- ── Page Header ────────────────────────────────────────────── --}}
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
@@ -120,10 +126,25 @@
     @endif
 
     {{-- ── History Table ────────────────────────────────────────────── --}}
+    @if(count($deletableSalaryIds) > 0)
+    <form id="bulkSalaryDeleteForm" method="POST" action="{{ route('employees.salary-history.bulk-destroy', $employee) }}"
+          onsubmit="return confirm('Delete selected salary history records? This cannot be undone.')">
+        @csrf
+        @method('DELETE')
+    </form>
+    @endif
+
     <div class="hrms-card p-0 overflow-hidden">
         <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
             <h6 class="fw-semibold mb-0">All Salary Records</h6>
-            <small class="text-muted">{{ $histories->count() }} record{{ $histories->count() !== 1 ? 's' : '' }}</small>
+            <div class="d-flex align-items-center gap-2">
+                <small class="text-muted">{{ $histories->count() }} record{{ $histories->count() !== 1 ? 's' : '' }}</small>
+                @if(count($deletableSalaryIds) > 0)
+                <button class="btn btn-sm btn-outline-danger" id="bulkDeleteSalaryBtn" form="bulkSalaryDeleteForm" disabled>
+                    <i class="bi bi-trash me-1"></i> Delete Selected
+                </button>
+                @endif
+            </div>
         </div>
 
         @if($histories->isEmpty())
@@ -144,9 +165,14 @@
                         <th>Reason / Note</th>
                         <th>Changed By</th>
                         <th>Status</th>
-                        @can('approve', App\Models\SalaryHistory::class)
+                        @if($canManageSalaryActions)
+                        <th style="width:42px;">
+                            @if(count($deletableSalaryIds) > 0)
+                            <input type="checkbox" class="form-check-input" id="checkAllSalaryHistory">
+                            @endif
+                        </th>
                         <th class="pe-4">Actions</th>
-                        @endcan
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -213,9 +239,16 @@
                             <div><small class="text-muted">by {{ $record->approvedBy->name }}</small></div>
                             @endif
                         </td>
-                        @can('approve', App\Models\SalaryHistory::class)
+                        @if($canManageSalaryActions)
+                        @php $canDeleteRecord = auth()->user()->can('delete', $record); @endphp
+                        <td>
+                            @if($canDeleteRecord)
+                            <input type="checkbox" class="form-check-input salary-history-checkbox"
+                                   form="bulkSalaryDeleteForm" name="salary_history_ids[]" value="{{ $record->id }}">
+                            @endif
+                        </td>
                         <td class="pe-4">
-                            @if($record->status === 'pending')
+                            @if($canApproveSalary && $record->status === 'pending')
                             <div class="d-flex gap-1">
                                 <form action="{{ route('employees.salary-history.approve', [$employee, $record]) }}" method="POST">
                                     @csrf @method('PATCH')
@@ -247,7 +280,7 @@
                                     </div>
                                 </div>
                             </div>
-                            @elseif($record->salary_type !== 'initial' && ! $record->usedInPayroll() && $record->status !== 'rejected')
+                            @elseif($canDeleteRecord)
                             <form action="{{ route('employees.salary-history.destroy', [$employee, $record]) }}" method="POST"
                                   onsubmit="return confirm('Delete this salary record? This cannot be undone.')">
                                 @csrf @method('DELETE')
@@ -259,7 +292,7 @@
                             <span class="text-muted small">—</span>
                             @endif
                         </td>
-                        @endcan
+                        @endif
                     </tr>
                     @endforeach
                 </tbody>
@@ -393,6 +426,25 @@
 
         newSalaryInput?.addEventListener('input', updateDelta);
         typeSelect?.addEventListener('change', () => { typeSelect.dataset.userChanged = '1'; });
+
+        const checkAll = document.getElementById('checkAllSalaryHistory');
+        const deleteBtn = document.getElementById('bulkDeleteSalaryBtn');
+        const boxes = Array.from(document.querySelectorAll('.salary-history-checkbox'));
+
+        function syncBulkDelete() {
+            const checked = boxes.filter(box => box.checked).length;
+            if (deleteBtn) deleteBtn.disabled = checked === 0;
+            if (checkAll) {
+                checkAll.checked = checked > 0 && checked === boxes.length;
+                checkAll.indeterminate = checked > 0 && checked < boxes.length;
+            }
+        }
+
+        checkAll?.addEventListener('change', () => {
+            boxes.forEach(box => { box.checked = checkAll.checked; });
+            syncBulkDelete();
+        });
+        boxes.forEach(box => box.addEventListener('change', syncBulkDelete));
 
         // Re-open modal if validation failed
         @if($errors->any())

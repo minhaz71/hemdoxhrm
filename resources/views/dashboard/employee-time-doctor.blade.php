@@ -18,6 +18,15 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <form method="GET" action="{{ route('dashboard.time-doctor') }}" class="d-flex gap-2">
+                @if($canSwitchEmployee)
+                <select name="employee_id" class="form-select form-select-sm" style="width:190px">
+                    @foreach($employees as $option)
+                        <option value="{{ $option->id }}" {{ $employee->id === $option->id ? 'selected' : '' }}>
+                            {{ $option->full_name }} ({{ $option->employee_code }})
+                        </option>
+                    @endforeach
+                </select>
+                @endif
                 <select name="month" class="form-select form-select-sm" style="width:130px">
                     @for($m = 1; $m <= 12; $m++)
                         <option value="{{ $m }}" {{ $month === $m ? 'selected' : '' }}>
@@ -30,7 +39,7 @@
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
             </form>
-            <a href="{{ route('dashboard.crm') }}" class="btn btn-sm btn-outline-secondary">
+            <a href="{{ route('dashboard.crm', $canSwitchEmployee ? ['employee_id' => $employee->id] : []) }}" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-grid-1x2 me-1"></i> CRM
             </a>
         </div>

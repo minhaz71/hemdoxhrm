@@ -133,4 +133,23 @@ class SalaryHistoryController extends Controller
             return redirect()->back()->with('error', collect($e->errors())->flatten()->first());
         }
     }
+
+    public function bulkDestroy(Request $request, Employee $employee): RedirectResponse
+    {
+        $data = $request->validate([
+            'salary_history_ids' => ['required', 'array', 'min:1'],
+            'salary_history_ids.*' => ['integer', 'exists:salary_histories,id'],
+        ]);
+
+        $result = $this->service->bulkDelete($employee, $data['salary_history_ids'], auth()->user());
+
+        $message = "{$result['deleted']} salary record(s) deleted. {$result['skipped']} skipped.";
+        if (! empty($result['errors'])) {
+            $message .= ' '.implode(' ', array_slice($result['errors'], 0, 3));
+        }
+
+        return redirect()
+            ->route('employees.salary-history.index', $employee)
+            ->with($result['deleted'] > 0 ? 'success' : 'warning', $message);
+    }
 }

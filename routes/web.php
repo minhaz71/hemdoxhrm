@@ -19,6 +19,7 @@ use App\Http\Controllers\DegreeNameController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeEducationController;
+use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\HolidayCsvImportController;
 use App\Http\Controllers\LeaveController;
@@ -58,6 +59,8 @@ Route::middleware('auth')->group(function () {
 // ── Admin only ────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', fn () => view('admin.dashboard'))->name('dashboard');
+    Route::get('/error-logs', [ErrorLogController::class, 'index'])->name('error-logs.index');
+    Route::post('/error-logs/clear', [ErrorLogController::class, 'clear'])->name('error-logs.clear');
 });
 
 // ── Activity Logs (admin + hr) ────────────────────────────────────
@@ -93,6 +96,8 @@ Route::middleware(['auth', 'role:admin,hr'])->group(function () {
         [SalaryHistoryController::class, 'reject'])->name('employees.salary-history.reject');
     Route::delete('employees/{employee}/salary-history/{salaryHistory}',
         [SalaryHistoryController::class, 'destroy'])->name('employees.salary-history.destroy');
+    Route::delete('employees/{employee}/salary-history',
+        [SalaryHistoryController::class, 'bulkDestroy'])->name('employees.salary-history.bulk-destroy');
     Route::get('salary-history',
         [SalaryHistoryController::class, 'directory'])->name('salary-history.index');
 
@@ -103,8 +108,10 @@ Route::middleware(['auth', 'role:admin,hr'])->group(function () {
     Route::get('payroll/{payroll}/edit',   [PayrollController::class, 'edit'])    ->name('payroll.edit');
     Route::patch('payroll/{payroll}',      [PayrollController::class, 'update'])  ->name('payroll.update');
     Route::patch('payroll/{payroll}/pay',         [PayrollController::class, 'pay'])        ->name('payroll.pay');
+    Route::post('payroll/{payroll}/send-message', [PayrollController::class, 'sendMessage'])->name('payroll.send-message');
     Route::post('payroll/{payroll}/regenerate',  [PayrollController::class, 'regenerate'])  ->name('payroll.regenerate');
     Route::post('payroll/bulk-pay',              [PayrollController::class, 'bulkPay'])     ->name('payroll.bulk-pay');
+    Route::post('payroll/bulk-send-messages',    [PayrollController::class, 'bulkSendMessages'])->name('payroll.bulk-send-messages');
 
     Route::prefix('holidays/import')->name('holidays.import.')->group(function () {
         Route::get('/', [HolidayCsvImportController::class, 'index'])->name('index');

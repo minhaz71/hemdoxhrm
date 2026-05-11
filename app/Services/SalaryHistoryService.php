@@ -262,6 +262,38 @@ class SalaryHistoryService
         });
     }
 
+    public function bulkDelete(Employee $employee, array $ids, User $actor): array
+    {
+        $records = SalaryHistory::where('employee_id', $employee->id)
+            ->whereIn('id', $ids)
+            ->get();
+
+        $result = ['deleted' => 0, 'skipped' => 0, 'errors' => []];
+
+        foreach ($records as $record) {
+            if (! $actor->can('delete', $record)) {
+                $result['skipped']++;
+                $result['errors'][] = "#{$record->id}: not allowed or already used in payroll.";
+                continue;
+            }
+
+            try {
+                $this->delete($record);
+                $result['deleted']++;
+            } catch (ValidationException $e) {
+                $result['skipped']++;
+                $result['errors'][] = "#{$record->id}: ".collect($e->errors())->flatten()->first();
+            }
+        }
+
+        $missing = count(array_unique($ids)) - $records->count();
+        if ($missing > 0) {
+            $result['skipped'] += $missing;
+        }
+
+        return $result;
+    }
+
     // ── Private helpers ───────────────────────────────────────────
 
     /**

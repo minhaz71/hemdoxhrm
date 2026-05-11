@@ -12,18 +12,32 @@
         };
     @endphp
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h5 class="fw-bold mb-0">CRM Dashboard</h5>
             <small class="text-muted">{{ $employee->full_name }} — {{ $employee->employee_code }}</small>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('dashboard.time-doctor') }}" class="btn btn-outline-primary">
+        <div class="d-flex gap-2 flex-wrap">
+            @if($canSwitchEmployee)
+            <form method="GET" action="{{ route('dashboard.crm') }}" class="d-flex gap-2">
+                <select name="employee_id" class="form-select form-select-sm" style="width:220px">
+                    @foreach($employees as $option)
+                        <option value="{{ $option->id }}" {{ $employee->id === $option->id ? 'selected' : '' }}>
+                            {{ $option->full_name }} ({{ $option->employee_code }})
+                        </option>
+                    @endforeach
+                </select>
+                <button class="btn btn-sm btn-outline-primary">View</button>
+            </form>
+            @endif
+            <a href="{{ route('dashboard.time-doctor', $canSwitchEmployee ? ['employee_id' => $employee->id] : []) }}" class="btn btn-outline-primary">
                 <i class="bi bi-speedometer2 me-1"></i> Time Doctor
             </a>
+            @if(! $canSwitchEmployee)
             <a href="{{ route('employees.me') }}" class="btn btn-primary">
                 <i class="bi bi-person-vcard me-1"></i> My Profile
             </a>
+            @endif
         </div>
     </div>
 

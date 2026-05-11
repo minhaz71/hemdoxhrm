@@ -63,8 +63,6 @@ class PayrollService
         // Create the immutable salary snapshot tied to this payroll
         $this->createSalarySnapshot($payroll, $employee, $snapshotData);
 
-        $this->notifications->payrollGenerated($payroll->load('employee.user'));
-
         return $payroll;
     }
 
@@ -158,6 +156,20 @@ class PayrollService
         return $payroll->fresh();
     }
 
+    public function sendPayrollMessage(Payroll $payroll, User $sender): Payroll
+    {
+        $payroll->loadMissing(['employee.user', 'employee.teamLeader.user']);
+
+        $this->notifications->payrollGenerated($payroll);
+
+        $payroll->update([
+            'email_sent_at' => now(),
+            'email_sent_by' => $sender->id,
+        ]);
+
+        return $payroll->fresh(['employee', 'emailSentBy']);
+    }
+
     // ── Bulk pay entire period ─────────────────────────────────────
 
     public function bulkPay(int $month, int $year, User $paidBy): int
@@ -174,6 +186,53 @@ class PayrollService
                 'paid_by' => $paidBy->id,
             ]);
             $payroll->salarySnapshot?->lock($paidBy);
+        }
+
+        return $payrolls->count();
+    }
+
+    public function bulkPaySelected(array $ids, User $paidBy): int
+    {
+        $payrolls = Payroll::with('salarySnapshot')
+            ->whereIn('id', $ids)
+            ->whereIn('status', ['draft', 'processed'])
+            ->get();
+
+        foreach ($payrolls as $payroll) {
+            $payroll->update([
+                'status'  => 'paid',
+                'paid_at' => now(),
+                'paid_by' => $paidBy->id,
+            ]);
+            $payroll->salarySnapshot?->lock($paidBy);
+        }
+
+        return $payrolls->count();
+    }
+
+    public function bulkSendPayrollMessages(int $month, int $year, User $sender): int
+    {
+        $payrolls = Payroll::with(['employee.user', 'employee.teamLeader.user'])
+            ->forPeriod($month, $year)
+            ->whereNull('email_sent_at')
+            ->get();
+
+        foreach ($payrolls as $payroll) {
+            $this->sendPayrollMessage($payroll, $sender);
+        }
+
+        return $payrolls->count();
+    }
+
+    public function bulkSendSelectedPayrollMessages(array $ids, User $sender): int
+    {
+        $payrolls = Payroll::with(['employee.user', 'employee.teamLeader.user'])
+            ->whereIn('id', $ids)
+            ->whereNull('email_sent_at')
+            ->get();
+
+        foreach ($payrolls as $payroll) {
+            $this->sendPayrollMessage($payroll, $sender);
         }
 
         return $payrolls->count();

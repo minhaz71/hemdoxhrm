@@ -32,6 +32,15 @@
                 </button>
             </form>
             @endif
+            @if((auth()->user()->isAdmin() || auth()->user()->isHR()) && ! $payroll->email_sent_at)
+            <form method="POST" action="{{ route('payroll.send-message', $payroll) }}"
+                  onsubmit="return confirm('Send payroll message to this employee now?')">
+                @csrf
+                <button class="btn btn-outline-info">
+                    <i class="bi bi-send me-1"></i> Send Message
+                </button>
+            </form>
+            @endif
             <a href="{{ auth()->user()->isAdmin() || auth()->user()->isHR() ? route('payroll.index') : route('payroll.my') }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i> Back
             </a>
@@ -230,6 +239,22 @@
                 <p class="mb-0 text-muted">{{ $payroll->note }}</p>
             </div>
             @endif
+
+            <div class="hrms-card p-4 mt-4">
+                <h6 class="fw-semibold mb-2 text-muted text-uppercase" style="font-size:.75rem;letter-spacing:.05em;">Payroll Message</h6>
+                @if($payroll->email_sent_at)
+                    <div class="text-success fw-semibold">Sent</div>
+                    <small class="text-muted">
+                        {{ $payroll->email_sent_at->format('M j, Y H:i') }}
+                        @if($payroll->emailSentBy)
+                            by {{ $payroll->emailSentBy->name }}
+                        @endif
+                    </small>
+                @else
+                    <div class="text-muted">Not sent yet</div>
+                    <small class="text-muted">Admin/HR can send after checking this payroll.</small>
+                @endif
+            </div>
         </div>
     </div>
 </x-app-layout>
