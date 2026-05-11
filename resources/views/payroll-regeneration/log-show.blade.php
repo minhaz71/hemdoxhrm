@@ -94,6 +94,12 @@ $fields = [
 ];
 $old = $log->old_snapshot ?? [];
 $new = $log->new_snapshot ?? [];
+$overtimeEnabled = in_array(app(\App\Services\SettingService::class)->get('overtime_pay_enabled', false), [true, 'true', '1', 1], true)
+    || (bool) ($old['overtime_enabled'] ?? false)
+    || (bool) ($new['overtime_enabled'] ?? false);
+if (! $overtimeEnabled) {
+    unset($fields['overtime_amount']);
+}
 $currencyFields = ['base_salary','bonus','incentive','overtime_amount','gross_salary',
                    'late_deduction','absent_deduction','leave_deduction','total_deductions','net_salary'];
 @endphp

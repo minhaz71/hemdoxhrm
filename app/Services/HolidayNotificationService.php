@@ -257,7 +257,7 @@ class HolidayNotificationService
     private function sendAndUpdateLog(Holiday $holiday, Employee $employee, HolidayEmailLog $log): string
     {
         try {
-            Mail::to($employee->user->email)
+            Mail::to($this->employeeEmails($employee))
                 ->send(new HolidayReminderMail($holiday, $employee));
 
             $log->update([
@@ -284,5 +284,18 @@ class HolidayNotificationService
             : $holiday->start_date->format('d M') . ' – ' . $holiday->end_date->format('d M Y');
 
         return "[Holiday Notice] {$holiday->title} · {$dateRange}";
+    }
+
+    private function employeeEmails(Employee $employee): array
+    {
+        return collect([
+            $employee->user?->email,
+            $employee->user?->alternate_email,
+        ])
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

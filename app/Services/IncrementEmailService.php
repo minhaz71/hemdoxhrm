@@ -176,8 +176,9 @@ class IncrementEmailService
         foreach ($records as $sh) {
             $employee = $sh->employee;
             $email    = $employee?->user?->email;
+            $emails   = $this->employeeEmails($employee);
 
-            if (! $email) {
+            if ($emails === []) {
                 $results['failed']++;
                 $results['errors'][] = ($employee?->full_name ?? "ID:{$sh->employee_id}") . ': no email address found';
                 continue;
@@ -201,7 +202,7 @@ class IncrementEmailService
                 $mailable = $this->buildMailable($sh, $resolved);
                 $body     = $mailable->render();
 
-                Mail::to($email)->send($mailable);
+                Mail::to($emails)->send($mailable);
 
                 $log->update([
                     'body'    => $body,
@@ -268,5 +269,18 @@ class IncrementEmailService
             signatureContact:$resolved['signature_contact'],
             companyName:     config('app.name'),
         );
+    }
+
+    private function employeeEmails(?Employee $employee): array
+    {
+        return collect([
+            $employee?->user?->email,
+            $employee?->user?->alternate_email,
+        ])
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

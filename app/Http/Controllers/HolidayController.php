@@ -142,8 +142,15 @@ class HolidayController extends Controller
 
         if ($log) return 'skipped';
 
+        $emails = collect([$employee->user?->email, $employee->user?->alternate_email])
+            ->map(fn ($address) => strtolower(trim((string) $address)))
+            ->filter(fn ($address) => filter_var($address, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values()
+            ->all();
+
         try {
-            \Illuminate\Support\Facades\Mail::to($email)
+            \Illuminate\Support\Facades\Mail::to($emails)
                 ->send(new \App\Mail\HolidayReminderMail($holiday, $employee));
 
             \App\Models\HolidayEmailLog::updateOrCreate(

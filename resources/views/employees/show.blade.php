@@ -97,6 +97,10 @@
                         <span class="fw-semibold">{{ $employee->user?->email ?? '—' }}</span>
                     </div>
                     <div class="col-md-6">
+                        <small class="text-muted d-block">Alternate Email</small>
+                        <span class="fw-semibold">{{ $employee->user?->alternate_email ?? '—' }}</span>
+                    </div>
+                    <div class="col-md-6">
                         <small class="text-muted d-block">Phone</small>
                         <span class="fw-semibold">{{ $employee->phone ?? '—' }}</span>
                     </div>
@@ -232,6 +236,11 @@
                 </h6>
                 <small class="text-muted" style="font-size:.75rem;">Email</small>
                 <div class="fw-semibold mb-2" style="font-size:.875rem;">{{ $employee->user->email }}</div>
+                @if($employee->user->alternate_email)
+                <small class="text-muted" style="font-size:.75rem;">Alternate Email</small>
+                <div class="fw-semibold mb-1" style="font-size:.875rem;">{{ $employee->user->alternate_email }}</div>
+                <div class="text-muted mb-2" style="font-size:.72rem;">Notification-only. Time Doctor uses primary email.</div>
+                @endif
                 @if($employee->login_id)
                 <small class="text-muted" style="font-size:.75rem;">User ID</small>
                 <div class="fw-semibold mb-2" style="font-size:.875rem;font-family:monospace;">{{ $employee->login_id }}</div>

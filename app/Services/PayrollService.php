@@ -21,18 +21,8 @@ class PayrollService
         private readonly NotificationService $notifications,
         private readonly HolidayCalendarService $calendar,
         private readonly SalaryResolverService $salaryResolver,
+        private readonly SettingService $settings,
     ) {}
-
-    // ── Rate constants ────────────────────────────────────────────
-
-    // Deduction: one day's salary per absent day
-    private const ABSENT_DEDUCTION_RATE = 1.0;
-
-    // Deduction: one day's salary per unpaid leave day
-    private const UNPAID_LEAVE_RATE = 1.0;
-
-    // Deduction: flat amount per late check-in
-    private const LATE_PENALTY_PER_DAY = 10.00;
 
     // ── Generate single employee payroll ─────────────────────────
 
@@ -116,20 +106,33 @@ class PayrollService
 
         $bonus     = (float) ($data['bonus']           ?? $payroll->bonus);
         $incentive = (float) ($data['incentive']       ?? $payroll->incentive);
-        $overtime  = (float) ($data['overtime_amount'] ?? $payroll->overtime_amount);
+        $overtimeEnabled = $this->boolSetting('overtime_pay_enabled', false);
+        $overtime  = $overtimeEnabled ? (float) ($data['overtime_amount'] ?? $payroll->overtime_amount) : 0.0;
         $note      = $data['note']                     ?? $payroll->note;
+        $lateDeduction = (float) ($data['late_deduction'] ?? $payroll->late_deduction);
+        $leaveDeduction = (float) ($data['leave_deduction'] ?? $payroll->leave_deduction);
+        $workingDays = array_key_exists('management_working_days', $data)
+            ? ($data['management_working_days'] !== null && $data['management_working_days'] !== ''
+                ? (int) $data['management_working_days']
+                : $payroll->calendar_working_days)
+            : $payroll->working_days;
 
         $gross           = $payroll->base_salary + $bonus + $incentive + $overtime;
-        $totalDeductions = $payroll->late_deduction + $payroll->absent_deduction + $payroll->leave_deduction;
+        $totalDeductions = $lateDeduction + $payroll->absent_deduction + $leaveDeduction;
         $net             = max(0, $gross - $totalDeductions);
 
         $payroll->update([
             'bonus'           => $bonus,
             'incentive'       => $incentive,
             'overtime_amount' => $overtime,
+            'overtime_enabled'=> $overtimeEnabled,
             'gross_salary'    => $gross,
+            'late_deduction'  => $lateDeduction,
+            'leave_deduction' => $leaveDeduction,
             'total_deductions'=> $totalDeductions,
             'net_salary'      => $net,
+            'working_days'    => $workingDays,
+            'management_working_days' => array_key_exists('management_working_days', $data) ? $workingDays : $payroll->management_working_days,
             'note'            => $note,
             'status'          => 'processed',
         ]);
@@ -243,14 +246,19 @@ class PayrollService
         $periodStart = Carbon::createFromDate($year, $month, 1)->startOfMonth();
         $periodEnd   = $periodStart->copy()->endOfMonth();
 
-        // Total working days in the month (respects holidays + weekly offs for this employee)
-        $workingDays = $this->calendar->countWorkingDaysForEmployee($employee, $periodStart, $periodEnd);
+        // Calendar working days respect holidays + weekly offs. Management may
+        // override this denominator for one employee or a full bulk run.
+        $calendarWorkingDays = $this->calendar->countWorkingDaysForEmployee($employee, $periodStart, $periodEnd);
+        $managementWorkingDays = isset($adj['management_working_days']) && $adj['management_working_days'] !== ''
+            ? (int) $adj['management_working_days']
+            : null;
+        $workingDays = $managementWorkingDays ?? $calendarWorkingDays;
 
         // ── Salary resolution from history (mode-aware) ───────────
         // Delegates to SalaryResolverService which applies the admin-configured
         // mode: month_start | month_end | prorated.
         // NEVER reads employees.base_salary — always from salary_histories.
-        $resolution = $this->salaryResolver->getSalaryForMonth($employee, $month, $year);
+        $resolution = $this->salaryResolver->getSalaryForMonth($employee, $month, $year, $workingDays);
         $baseSalary = $resolution['effective_salary'];
 
         // Daily salary rate (denominator = total working days for the month)
@@ -321,14 +329,29 @@ class PayrollService
         // ── Earnings ──────────────────────────────────────────────
         $bonus      = (float) ($adj['bonus']           ?? 0);
         $incentive  = (float) ($adj['incentive']       ?? 0);
-        $overtime   = (float) ($adj['overtime_amount'] ?? 0);
+        $overtimeEnabled = $this->boolSetting('overtime_pay_enabled', false);
+        $overtime   = $overtimeEnabled ? (float) ($adj['overtime_amount'] ?? 0) : 0.0;
         $gross      = $baseSalary + $bonus + $incentive + $overtime;
 
         // ── Deductions ────────────────────────────────────────────
-        $lateDeduction   = round($lateDays       * self::LATE_PENALTY_PER_DAY,       2);
-        $absentDeduction = round($absentDays      * $dailyRate * self::ABSENT_DEDUCTION_RATE, 2);
+        $latePenaltyEnabled = $this->boolSetting('late_penalty_enabled', true);
+        $latePenaltyAmount = (float) $this->settings->get('late_penalty_amount', 10);
+        $leavePenaltyEnabled = $this->boolSetting('leave_penalty_enabled', true);
+        $leavePenaltyRate = (float) $this->settings->get('leave_penalty_rate', 1);
+
+        $lateDeduction   = $latePenaltyEnabled ? round($lateDays * $latePenaltyAmount, 2) : 0.0;
+        $absentDeduction = round($absentDays * $dailyRate, 2);
         // Only unpaid leave is deducted; paid leave has no deduction
-        $leaveDeduction  = round($unpaidLeaveDays * $dailyRate * self::UNPAID_LEAVE_RATE,     2);
+        $leaveDeduction  = $leavePenaltyEnabled ? round($unpaidLeaveDays * $dailyRate * $leavePenaltyRate, 2) : 0.0;
+
+        // HR/Admin can override penalty values during generation.
+        if (array_key_exists('late_deduction', $adj) && $adj['late_deduction'] !== null && $adj['late_deduction'] !== '') {
+            $lateDeduction = (float) $adj['late_deduction'];
+        }
+        if (array_key_exists('leave_deduction', $adj) && $adj['leave_deduction'] !== null && $adj['leave_deduction'] !== '') {
+            $leaveDeduction = (float) $adj['leave_deduction'];
+        }
+
         $totalDeductions = $lateDeduction + $absentDeduction + $leaveDeduction;
 
         // ── Net ───────────────────────────────────────────────────
@@ -344,6 +367,7 @@ class PayrollService
             'bonus'             => $bonus,
             'incentive'         => $incentive,
             'overtime_amount'   => $overtime,
+            'overtime_enabled'   => $overtimeEnabled,
             'gross_salary'      => $gross,
 
             // Deductions snapshot
@@ -357,14 +381,20 @@ class PayrollService
 
             // Attendance audit trail
             'working_days'      => $workingDays,
+            'management_working_days' => $managementWorkingDays,
+            'calendar_working_days' => $calendarWorkingDays,
             'holiday_days'      => $holidayDays,
             'weekly_off_days'   => $weeklyOffDays,
             'leave_days'        => $leaveDaysSnapshot,
             'present_days'      => $presentDays,
             'absent_days'       => $absentDays,
             'late_days'         => $lateDays,
+            'late_penalty_enabled' => $latePenaltyEnabled,
+            'late_penalty_amount' => $latePenaltyAmount,
             'paid_leave_days'   => $paidLeaveDays,
             'unpaid_leave_days' => $unpaidLeaveDays,
+            'leave_penalty_enabled' => $leavePenaltyEnabled,
+            'leave_penalty_rate' => $leavePenaltyRate,
 
             // Salary resolution audit
             'salary_resolution_mode' => $resolution['mode'],
@@ -424,5 +454,12 @@ class PayrollService
     private function monthLabel(int $month, int $year): string
     {
         return Carbon::createFromDate($year, $month, 1)->format('F Y');
+    }
+
+    private function boolSetting(string $key, bool $default): bool
+    {
+        $value = $this->settings->get($key, $default);
+
+        return in_array($value, [true, 'true', '1', 1], true);
     }
 }

@@ -125,8 +125,10 @@
                         'Base Salary'   => $payroll->base_salary,
                         'Bonus'         => $payroll->bonus,
                         'Incentive'     => $payroll->incentive,
-                        'Overtime'      => $payroll->overtime_amount,
                     ];
+                    if ($overtimeEnabled) {
+                        $earnings['Overtime'] = $payroll->overtime_amount;
+                    }
                     @endphp
                     @foreach ($earnings as $label => $amount)
                     <div class="d-flex justify-content-between py-2 border-bottom">
@@ -149,9 +151,9 @@
                 <div class="p-4">
                     @php
                     $deductions = [
-                        'Late Penalty ('.$payroll->late_days.' day(s) × '.currency_symbol().'10)' => $payroll->late_deduction,
+                        'Late Penalty ('.$payroll->late_days.' day(s)'.($payroll->late_penalty_enabled ? ' × '.currency($payroll->late_penalty_amount) : ' · off').')' => $payroll->late_deduction,
                         'Absent Deduction ('.$payroll->absent_days.' day(s))'     => $payroll->absent_deduction,
-                        'Unpaid Leave ('.$payroll->unpaid_leave_days.' day(s))'   => $payroll->leave_deduction,
+                        'Unpaid Leave ('.$payroll->unpaid_leave_days.' day(s)'.($payroll->leave_penalty_enabled ? ' × '.$payroll->leave_penalty_rate.' daily rate' : ' · off').')'   => $payroll->leave_deduction,
                     ];
                     @endphp
                     @foreach ($deductions as $label => $amount)
@@ -184,7 +186,7 @@
                 </h6>
                 @php
                 $attRows = [
-                    ['Working Days',  $payroll->working_days,           'secondary', null],
+                    ['Working Days',  $payroll->working_days,           'secondary', $payroll->management_working_days !== null ? 'set by management' : null],
                     ['Present',       $payroll->present_days,           'success',   null],
                     ['Late',          $payroll->late_days,              'warning',   null],
                     ['Absent',        $payroll->absent_days,            'danger',    '← deducted'],

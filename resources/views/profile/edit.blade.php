@@ -196,12 +196,20 @@
                                            value="{{ old('name', $user->name) }}" required>
                                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
-                                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                                           value="{{ old('email', $user->email) }}" required>
-                                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
+	                                <div class="col-md-6">
+	                                    <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+	                                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
+	                                           value="{{ old('email', $user->email) }}" required>
+                                        <div class="form-text">Primary email is used for login and Time Doctor matching.</div>
+	                                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+	                                </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Alternate Email</label>
+                                        <input type="email" name="alternate_email" class="form-control @error('alternate_email') is-invalid @enderror"
+                                               value="{{ old('alternate_email', $user->alternate_email) }}" placeholder="personal@example.com">
+                                        <div class="form-text">Notification-only. Workplace emails are sent to both addresses when provided.</div>
+                                        @error('alternate_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
 
                                 {{-- Account metadata (read-only) --}}
                                 <div class="col-12 mt-2">

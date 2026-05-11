@@ -19,8 +19,10 @@
             {{-- Read-only deductions info --}}
             <div class="alert alert-info mb-4">
                 <i class="bi bi-info-circle me-2"></i>
-                Deductions are calculated from attendance data and cannot be edited directly.
-                Adjust earnings (bonus, incentive, overtime) below.
+                HR/Admin can adjust management working days, late penalty, and leave penalty before payment.
+                @if($overtimeEnabled)
+                    Overtime is available because it is enabled in Payroll Settings.
+                @endif
             </div>
 
             <div class="hrms-card p-4 mb-4">
@@ -28,7 +30,9 @@
                     Current Deductions (read-only)
                 </h6>
                 <div class="d-flex justify-content-between mb-1">
-                    <span class="text-muted">Late ({{ $payroll->late_days }} days × {{ currency_symbol() }}10)</span>
+                    <span class="text-muted">
+                        Late ({{ $payroll->late_days }} days{{ $payroll->late_penalty_enabled ? ' × '.currency($payroll->late_penalty_amount) : ' · penalty off' }})
+                    </span>
                     <span class="text-danger">{{ currency(-$payroll->late_deduction) }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-1">
@@ -50,6 +54,14 @@
                     </h6>
                     <div class="row g-3">
                         <div class="col-12">
+                            <label class="form-label">Management Working Days</label>
+                            <input type="number" name="management_working_days" min="0" max="31"
+                                   class="form-control @error('management_working_days') is-invalid @enderror"
+                                   value="{{ old('management_working_days', $payroll->management_working_days ?? $payroll->working_days) }}">
+                            <div class="form-text">Calendar working days: {{ $payroll->calendar_working_days ?? $payroll->working_days }}.</div>
+                            @error('management_working_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12">
                             <label class="form-label">Bonus</label>
                             <div class="input-group">
                                 <span class="input-group-text">{{ currency_symbol() }}</span>
@@ -69,6 +81,7 @@
                                 @error('incentive')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
+                        @if($overtimeEnabled)
                         <div class="col-12">
                             <label class="form-label">Overtime</label>
                             <div class="input-group">
@@ -77,6 +90,27 @@
                                        class="form-control @error('overtime_amount') is-invalid @enderror"
                                        value="{{ old('overtime_amount', $payroll->overtime_amount) }}">
                                 @error('overtime_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        @endif
+                        <div class="col-12">
+                            <label class="form-label">Late Penalty</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ currency_symbol() }}</span>
+                                <input type="number" name="late_deduction" step="0.01" min="0"
+                                       class="form-control @error('late_deduction') is-invalid @enderror"
+                                       value="{{ old('late_deduction', $payroll->late_deduction) }}">
+                                @error('late_deduction')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Leave Penalty</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ currency_symbol() }}</span>
+                                <input type="number" name="leave_deduction" step="0.01" min="0"
+                                       class="form-control @error('leave_deduction') is-invalid @enderror"
+                                       value="{{ old('leave_deduction', $payroll->leave_deduction) }}">
+                                @error('leave_deduction')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
                         <div class="col-12">

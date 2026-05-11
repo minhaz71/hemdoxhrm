@@ -132,7 +132,7 @@
     </div>
     @endif
 
-    @if($totals['total_bonus'] + $totals['total_incentive'] + $totals['total_overtime'] > 0)
+    @if($totals['total_bonus'] + $totals['total_incentive'] + ($overtimeEnabled ? $totals['total_overtime'] : 0) > 0)
     <div class="row g-3 mb-4">
         <div class="col-sm-4">
             <div class="hrms-card p-3 d-flex justify-content-between align-items-center">
@@ -146,12 +146,14 @@
                 <strong>{{ currency($totals['total_incentive']) }}</strong>
             </div>
         </div>
+        @if($overtimeEnabled)
         <div class="col-sm-4">
             <div class="hrms-card p-3 d-flex justify-content-between align-items-center">
                 <span class="text-muted" style="font-size:.85rem;">Total Overtime</span>
                 <strong>{{ currency($totals['total_overtime']) }}</strong>
             </div>
         </div>
+        @endif
     </div>
     @endif
 
@@ -276,7 +278,7 @@
             <i class="bi bi-info-circle me-1"></i>
             <strong>Deduction rules:</strong>
             Absent days → full-day deduction.
-            Unpaid leave → full-day deduction.
+            Unpaid leave → management-configured leave penalty.
             Paid leave, holidays, weekly offs → <em>no deduction</em>.
         </div>
     </div>

@@ -128,6 +128,7 @@ class EmployeeService
                 $employee->user->update([
                     'name' => $data['first_name'] . ' ' . $data['last_name'],
                     'email' => $data['email'] ?: $employee->user->email,
+                    'alternate_email' => $data['alternate_email'] ?? null,
                 ]);
             } elseif (! empty($data['email'])) {
                 $user = $this->createLinkedUser($data);
@@ -187,6 +188,7 @@ class EmployeeService
         $user = User::create([
             'name'            => $data['first_name'] . ' ' . $data['last_name'],
             'email'           => $data['email'],
+            'alternate_email' => $data['alternate_email'] ?? null,
             'password'        => Hash::make($data['password'] ?? Str::random(32)),
             'approval_status' => 'approved',
         ]);

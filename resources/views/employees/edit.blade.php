@@ -52,6 +52,13 @@
                             @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Alternate Email</label>
+                            <input type="email" name="alternate_email" class="form-control @error('alternate_email') is-invalid @enderror"
+                                   value="{{ old('alternate_email', $employee->user?->alternate_email) }}" placeholder="personal@example.com">
+                            <div class="form-text">Notification-only. Time Doctor matching always uses primary email.</div>
+                            @error('alternate_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Date of Birth</label>
                             <input type="date" name="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror"
                                    value="{{ old('date_of_birth', $employee->date_of_birth?->format('Y-m-d')) }}">

@@ -296,7 +296,7 @@
                 <div class="tab-pane fade" id="panel-attendance" role="tabpanel">
                     <div class="hrms-card p-4">
                         <h6 class="fw-semibold mb-1"><i class="bi bi-clock-history me-2 text-primary"></i>Attendance Rules</h6>
-                        <small class="text-muted d-block mb-4">Governs work hours, grace periods, and overtime thresholds.</small>
+                        <small class="text-muted d-block mb-4">Governs work hours, grace periods, and attendance calculation.</small>
 
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -314,14 +314,7 @@
                                 </div>
                                 <div class="form-text">Minutes after shift start before marking late.</div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Overtime After</label>
-                                <div class="input-group">
-                                    <input type="number" id="overtime_threshold_hours" class="form-control" value="{{ $attendance['overtime_threshold_hours'] }}" min="0" max="24" step="0.5">
-                                    <span class="input-group-text">hrs</span>
-                                </div>
-                                <div class="form-text">Hours worked beyond this are overtime.</div>
-                            </div>
+                            <input type="hidden" id="overtime_threshold_hours" value="{{ $attendance['overtime_threshold_hours'] }}">
                             <div class="col-12">
                                 <label class="form-label">Work Days <span class="text-danger">*</span></label>
                                 <div class="d-flex flex-wrap gap-2">
@@ -552,7 +545,7 @@
                 <div class="tab-pane fade" id="panel-payroll" role="tabpanel">
                     <div class="hrms-card p-4">
                         <h6 class="fw-semibold mb-1"><i class="bi bi-cash-stack me-2 text-primary"></i>Payroll Rules</h6>
-                        <small class="text-muted d-block mb-4">Pay cycle, tax, and overtime defaults.</small>
+                        <small class="text-muted d-block mb-4">Pay cycle, penalties, management working days behavior, and overtime visibility.</small>
 
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -571,12 +564,49 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label">Overtime Pay</label>
+                                <div class="border rounded p-3 h-100 d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.9rem;">Enable overtime pay</div>
+                                        <div class="text-muted" style="font-size:.78rem;">When off, overtime is hidden and ignored in payroll.</div>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="overtime_pay_enabled"
+                                               {{ $payroll['overtime_pay_enabled'] === true || $payroll['overtime_pay_enabled'] === 'true' ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Overtime Pay Multiplier</label>
                                 <div class="input-group">
                                     <span class="input-group-text">×</span>
                                     <input type="number" id="overtime_multiplier" class="form-control" value="{{ $payroll['overtime_multiplier'] }}" min="1" max="10" step="0.1">
                                 </div>
-                                <div class="form-text">e.g. 1.5 = time-and-a-half</div>
+                                <div class="form-text">Only used when overtime pay is enabled.</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Late Penalty</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">{{ currency_symbol() }}</span>
+                                    <input type="number" id="late_penalty_amount" class="form-control" value="{{ $payroll['late_penalty_amount'] }}" min="0" step="0.01">
+                                </div>
+                                <label class="form-check mt-2">
+                                    <input type="checkbox" id="late_penalty_enabled" class="form-check-input"
+                                           {{ $payroll['late_penalty_enabled'] === true || $payroll['late_penalty_enabled'] === 'true' ? 'checked' : '' }}>
+                                    <span class="form-check-label small">Apply late penalty</span>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Unpaid Leave Penalty Rate</label>
+                                <div class="input-group">
+                                    <input type="number" id="leave_penalty_rate" class="form-control" value="{{ $payroll['leave_penalty_rate'] }}" min="0" max="10" step="0.01">
+                                    <span class="input-group-text">× daily rate</span>
+                                </div>
+                                <label class="form-check mt-2">
+                                    <input type="checkbox" id="leave_penalty_enabled" class="form-check-input"
+                                           {{ $payroll['leave_penalty_enabled'] === true || $payroll['leave_penalty_enabled'] === 'true' ? 'checked' : '' }}>
+                                    <span class="form-check-label small">Apply unpaid leave penalty</span>
+                                </label>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Payslip Footer Note</label>
@@ -649,7 +679,7 @@
                             </div>
                         </div>
                         <div class="mt-4">
-                            <button class="btn btn-primary" onclick="saveSection('payroll', '/settings/payroll', ['pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note','salary_change_effect_mode'])">
+                            <button class="btn btn-primary" onclick="savePayrollSettings()">
                                 <i class="bi bi-check2 me-1"></i> Save Payroll Rules
                             </button>
                         </div>
@@ -1133,11 +1163,21 @@
         );
 
         // ── Payroll save ───────────────────────────────────────────
-        document.getElementById('btnSavePayroll')?.addEventListener('click', () =>
-            saveSection('payroll', '/settings/payroll', [
-                'pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note','salary_change_effect_mode',
-            ])
-        );
+        window.savePayrollSettings = function () {
+            const data = {};
+            [
+                'pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note',
+                'salary_change_effect_mode','late_penalty_amount','leave_penalty_rate',
+            ].forEach(id => data[id] = document.getElementById(id)?.value ?? '');
+
+            data.late_penalty_enabled = document.getElementById('late_penalty_enabled')?.checked ? 'true' : 'false';
+            data.leave_penalty_enabled = document.getElementById('leave_penalty_enabled')?.checked ? 'true' : 'false';
+            data.overtime_pay_enabled = document.getElementById('overtime_pay_enabled')?.checked ? 'true' : 'false';
+
+            post('/settings/payroll', data)
+                .then(d => showToast(d.message, !!d.success))
+                .catch(() => showToast('Failed.', false));
+        };
 
         // ── Holiday email toggle label ─────────────────────────────
         document.getElementById('holiday_email_enabled')?.addEventListener('change', function () {

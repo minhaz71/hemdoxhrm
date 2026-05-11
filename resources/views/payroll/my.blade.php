@@ -54,6 +54,9 @@
                         <th>Period</th>
                         <th>Base</th>
                         <th>Gross</th>
+                        @if($overtimeEnabled)
+                        <th>Overtime</th>
+                        @endif
                         <th>Deductions</th>
                         <th>Net</th>
                         <th>Status</th>
@@ -69,6 +72,9 @@
                         </td>
                         <td>{{ currency($payroll->base_salary) }}</td>
                         <td class="text-success fw-semibold">{{ currency($payroll->gross_salary) }}</td>
+                        @if($overtimeEnabled)
+                        <td>{{ currency($payroll->overtime_amount) }}</td>
+                        @endif
                         <td class="text-danger">{{ currency(-$payroll->total_deductions) }}</td>
                         <td class="fw-bold text-primary">{{ currency($payroll->net_salary) }}</td>
                         <td>
@@ -95,7 +101,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="{{ $overtimeEnabled ? 8 : 7 }}" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
                             No salary records available yet.
                         </td>

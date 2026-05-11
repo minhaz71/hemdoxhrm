@@ -204,10 +204,12 @@
                 <div class="row-label">Incentive</div>
                 <div class="row-value green">{{ currency($payroll->incentive) }}</div>
             </div>
-            <div class="row">
-                <div class="row-label">Overtime</div>
-                <div class="row-value green">{{ currency($payroll->overtime_amount) }}</div>
-            </div>
+            @if($payroll->overtime_enabled)
+                <div class="row">
+                    <div class="row-label">Overtime</div>
+                    <div class="row-value green">{{ currency($payroll->overtime_amount) }}</div>
+                </div>
+            @endif
 
             <div class="total-row">
                 <div class="total-label">Gross Salary</div>

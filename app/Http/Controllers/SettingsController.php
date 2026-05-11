@@ -75,6 +75,11 @@ class SettingsController extends Controller
                 'overtime_multiplier'        => $s->get('overtime_multiplier',        '1.5'),
                 'payslip_footer_note'        => $s->get('payslip_footer_note',        ''),
                 'salary_change_effect_mode'  => $s->get('salary_change_effect_mode',  'month_start'),
+                'late_penalty_enabled'       => $s->get('late_penalty_enabled',       true),
+                'late_penalty_amount'        => $s->get('late_penalty_amount',        '10'),
+                'leave_penalty_enabled'      => $s->get('leave_penalty_enabled',      true),
+                'leave_penalty_rate'         => $s->get('leave_penalty_rate',         '1'),
+                'overtime_pay_enabled'       => $s->get('overtime_pay_enabled',       false),
             ],
 
             // SMTP — use service so password is decrypted then re-masked for display
@@ -266,7 +271,16 @@ class SettingsController extends Controller
             'overtime_multiplier'       => ['required', 'numeric', 'min:1', 'max:10'],
             'payslip_footer_note'       => ['nullable', 'string', 'max:500'],
             'salary_change_effect_mode' => ['required', 'in:month_start,month_end,prorated'],
+            'late_penalty_enabled'      => ['required', 'in:true,false,0,1'],
+            'late_penalty_amount'       => ['required', 'numeric', 'min:0', 'max:100000'],
+            'leave_penalty_enabled'     => ['required', 'in:true,false,0,1'],
+            'leave_penalty_rate'        => ['required', 'numeric', 'min:0', 'max:10'],
+            'overtime_pay_enabled'      => ['required', 'in:true,false,0,1'],
         ]);
+
+        foreach (['late_penalty_enabled', 'leave_penalty_enabled', 'overtime_pay_enabled'] as $key) {
+            $data[$key] = in_array($data[$key], ['true', '1', true, 1], true) ? 'true' : 'false';
+        }
 
         $this->settings->setMany($data, 'payroll');
 

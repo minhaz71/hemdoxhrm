@@ -28,46 +28,47 @@ class NotificationService
     public function leaveApproved(Leave $leave): void
     {
         $leave->loadMissing(['employee.user', 'employee.teamLeader.user', 'leaveType', 'approvedBy']);
-        $email = $this->employeeEmail($leave->employee);
-        if ($email) {
+        $employeeEmails = $this->employeeEmails($leave->employee);
+        foreach ($employeeEmails as $email) {
             $this->send($email, new LeaveApprovedMail($leave));
         }
 
-        foreach ($this->teamLeaderAndConfiguredRecipients($leave->employee, 'leave_approval_cc_emails', [$email]) as $recipient) {
+        foreach ($this->teamLeaderAndConfiguredRecipients($leave->employee, 'leave_approval_cc_emails', $employeeEmails) as $recipient) {
             $this->send($recipient, new LeaveApprovedMail($leave));
         }
     }
 
     public function leaveRejected(Leave $leave): void
     {
-        $email = $this->employeeEmail($leave->employee);
-        if (! $email) return;
-
-        $this->send($email, new LeaveRejectedMail($leave));
+        foreach ($this->employeeEmails($leave->employee) as $email) {
+            $this->send($email, new LeaveRejectedMail($leave));
+        }
     }
 
     public function payrollGenerated(Payroll $payroll): void
     {
         $payroll->loadMissing(['employee.user', 'employee.teamLeader.user']);
-        $email = $this->employeeEmail($payroll->employee);
-        if ($email) {
+        $employeeEmails = $this->employeeEmails($payroll->employee);
+        foreach ($employeeEmails as $email) {
             $this->send($email, new PayrollGeneratedMail($payroll));
         }
 
-        foreach ($this->teamLeaderAndConfiguredRecipients($payroll->employee, 'payslip_cc_emails', [$email]) as $recipient) {
+        foreach ($this->teamLeaderAndConfiguredRecipients($payroll->employee, 'payslip_cc_emails', $employeeEmails) as $recipient) {
             $this->send($recipient, new PayrollGeneratedMail($payroll));
         }
     }
 
     public function sendWarning(Employee $employee, string $subject, string $body): void
     {
-        $email = $this->employeeEmail($employee);
-        if (! $email) {
+        $emails = $this->employeeEmails($employee);
+        if ($emails === []) {
             Log::warning("Warning email skipped — no email for employee {$employee->employee_code}");
             return;
         }
 
-        $this->send($email, new WarningMail($employee, $subject, $body));
+        foreach ($emails as $email) {
+            $this->send($email, new WarningMail($employee, $subject, $body));
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────
@@ -75,6 +76,14 @@ class NotificationService
     private function employeeEmail(?Employee $employee): ?string
     {
         return $employee?->user?->email;
+    }
+
+    private function employeeEmails(?Employee $employee): array
+    {
+        return $this->dedupe([
+            $employee?->user?->email,
+            $employee?->user?->alternate_email,
+        ]);
     }
 
     private function leaveApplicationRecipients(): array

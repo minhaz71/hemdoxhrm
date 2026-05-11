@@ -90,6 +90,9 @@
                         <th>Employee</th>
                         <th>Base Salary</th>
                         <th>Gross</th>
+                        @if($overtimeEnabled)
+                        <th>Overtime</th>
+                        @endif
                         <th>Deductions</th>
                         <th>Net Salary</th>
                         <th>Attendance</th>
@@ -106,6 +109,9 @@
                         </td>
                         <td>{{ currency($payroll->base_salary) }}</td>
                         <td class="text-success fw-semibold">{{ currency($payroll->gross_salary) }}</td>
+                        @if($overtimeEnabled)
+                        <td>{{ currency($payroll->overtime_amount) }}</td>
+                        @endif
                         <td class="text-danger">{{ currency(-$payroll->total_deductions) }}</td>
                         <td class="fw-bold">{{ currency($payroll->net_salary) }}</td>
                         <td>
@@ -148,7 +154,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
+                        <td colspan="{{ $overtimeEnabled ? 9 : 8 }}" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
                             No payroll records for this period.
                             <a href="{{ route('payroll.create') }}">Generate now.</a>

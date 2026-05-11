@@ -171,7 +171,7 @@ class ReportService
             'total_net'          => $records->sum('net_salary'),
             'total_bonus'        => $records->sum('bonus'),
             'total_incentive'    => $records->sum('incentive'),
-            'total_overtime'     => $records->sum('overtime_amount'),
+            'total_overtime'     => $this->overtimeEnabled() ? $records->sum('overtime_amount') : 0,
             'paid_count'         => $records->where('status', 'paid')->count(),
             'draft_count'        => $records->whereIn('status', ['draft', 'processed'])->count(),
             'avg_net'            => $records->avg('net_salary'),
@@ -184,7 +184,16 @@ class ReportService
             'total_unpaid_leave' => $records->sum('unpaid_leave_days'),
         ];
 
-        return compact('records', 'totals', 'month', 'year', 'filters');
+        $overtimeEnabled = $this->overtimeEnabled();
+
+        return compact('records', 'totals', 'month', 'year', 'filters', 'overtimeEnabled');
+    }
+
+    private function overtimeEnabled(): bool
+    {
+        $value = app(SettingService::class)->get('overtime_pay_enabled', false);
+
+        return in_array($value, [true, 'true', '1', 1], true);
     }
 
     // ── Leave Report ──────────────────────────────────────────────

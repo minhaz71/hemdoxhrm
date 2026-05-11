@@ -41,8 +41,8 @@ class SalaryHistoryPolicy
     /** Delete a record — admin only, and only if not used in payroll. */
     public function delete(User $user, SalaryHistory $record): bool
     {
-        return $user->isAdmin()
-            && $record->salary_type !== SalaryHistory::TYPE_INITIAL
+        return $user->hasRole(['admin', 'hr'])
+            && in_array($record->salary_type, [SalaryHistory::TYPE_INCREMENT, SalaryHistory::TYPE_DECREMENT], true)
             && ! $record->usedInPayroll();
     }
 }

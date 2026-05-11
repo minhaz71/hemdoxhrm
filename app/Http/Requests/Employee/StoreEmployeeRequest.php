@@ -42,6 +42,7 @@ class StoreEmployeeRequest extends FormRequest
 
             // Optional linked account
             'email'           => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'alternate_email' => ['nullable', 'email', 'max:255'],
             'password'        => ['nullable', 'confirmed', EnterprisePassword::rules()],
         ];
     }

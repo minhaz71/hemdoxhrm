@@ -17,6 +17,9 @@ class AdjustPayrollRequest extends FormRequest
             'bonus'           => ['nullable', 'numeric', 'min:0'],
             'incentive'       => ['nullable', 'numeric', 'min:0'],
             'overtime_amount' => ['nullable', 'numeric', 'min:0'],
+            'management_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
+            'late_deduction'  => ['nullable', 'numeric', 'min:0'],
+            'leave_deduction' => ['nullable', 'numeric', 'min:0'],
             'note'            => ['nullable', 'string', 'max:500'],
         ];
     }

@@ -51,6 +51,7 @@ class UpdateEmployeeRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email')->ignore($this->route('employee')?->user_id),
             ],
+            'alternate_email' => ['nullable', 'email', 'max:255'],
             // Documents & photo
             'nid'             => ['nullable', 'string', 'max:50'],
             'nid_document'    => ['nullable', 'file', 'mimes:pdf', 'max:5120'],

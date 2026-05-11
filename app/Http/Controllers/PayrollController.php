@@ -7,11 +7,15 @@ use App\Http\Requests\Payroll\GeneratePayrollRequest;
 use App\Models\Employee;
 use App\Models\Payroll;
 use App\Services\PayrollService;
+use App\Services\SettingService;
 use Illuminate\Http\Request;
 
 class PayrollController extends Controller
 {
-    public function __construct(private readonly PayrollService $payrollService) {}
+    public function __construct(
+        private readonly PayrollService $payrollService,
+        private readonly SettingService $settings,
+    ) {}
 
     // GET /payroll — list by period
     public function index(Request $request)
@@ -20,16 +24,18 @@ class PayrollController extends Controller
         $year    = (int) $request->get('year',  now()->year);
         $summary = $this->payrollService->periodSummary($month, $year);
         $records = $this->payrollService->paginateByPeriod($month, $year);
+        $overtimeEnabled = $this->isOvertimeEnabled();
 
-        return view('payroll.index', compact('records', 'summary', 'month', 'year'));
+        return view('payroll.index', compact('records', 'summary', 'month', 'year', 'overtimeEnabled'));
     }
 
     // GET /payroll/create — generate form
     public function create()
     {
         $employees = Employee::active()->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'base_salary']);
+        $overtimeEnabled = $this->isOvertimeEnabled();
 
-        return view('payroll.create', compact('employees'));
+        return view('payroll.create', compact('employees', 'overtimeEnabled'));
     }
 
     // POST /payroll — generate single or bulk
@@ -63,8 +69,9 @@ class PayrollController extends Controller
         $this->authorize('view', $payroll);
 
         $payroll->load(['employee', 'paidBy']);
+        $overtimeEnabled = $payroll->overtime_enabled || $this->isOvertimeEnabled();
 
-        return view('payroll.show', compact('payroll'));
+        return view('payroll.show', compact('payroll', 'overtimeEnabled'));
     }
 
     // GET /payroll/my — employee self-service salary history
@@ -76,8 +83,9 @@ class PayrollController extends Controller
 
         $records = $this->payrollService->paginateForEmployee($employee);
         $summary = $this->payrollService->employeeSummary($employee);
+        $overtimeEnabled = $this->isOvertimeEnabled();
 
-        return view('payroll.my', compact('employee', 'records', 'summary'));
+        return view('payroll.my', compact('employee', 'records', 'summary', 'overtimeEnabled'));
     }
 
     // GET /payroll/{payroll}/edit — adjust form (before payment)
@@ -86,8 +94,9 @@ class PayrollController extends Controller
         $this->authorize('update', $payroll);
 
         $payroll->load('employee');
+        $overtimeEnabled = $payroll->overtime_enabled || $this->isOvertimeEnabled();
 
-        return view('payroll.edit', compact('payroll'));
+        return view('payroll.edit', compact('payroll', 'overtimeEnabled'));
     }
 
     // PATCH /payroll/{payroll} — apply adjustments
@@ -140,5 +149,10 @@ class PayrollController extends Controller
         );
 
         return redirect()->back()->with('success', "{$count} payroll(s) marked as paid.");
+    }
+
+    private function isOvertimeEnabled(): bool
+    {
+        return in_array($this->settings->get('overtime_pay_enabled', false), [true, 'true', '1', 1], true);
     }
 }

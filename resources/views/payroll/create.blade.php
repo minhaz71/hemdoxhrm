@@ -70,9 +70,17 @@
                         Earnings Adjustments <span class="badge bg-secondary fw-normal ms-1">Optional</span>
                     </h6>
                     <small class="text-muted d-block mb-3">
-                        Deductions (late, absent, unpaid leave) are calculated automatically from attendance data.
+                        HR/Admin may set management working days and adjust penalties before generation. If bulk, the working-day value applies to all generated employees.
                     </small>
                     <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Management Working Days</label>
+                            <input type="number" name="management_working_days" min="0" max="31"
+                                   class="form-control @error('management_working_days') is-invalid @enderror"
+                                   value="{{ old('management_working_days') }}" placeholder="Auto">
+                            <div class="form-text">Overrides calendar working days for this payroll run.</div>
+                            @error('management_working_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                         <div class="col-md-4">
                             <label class="form-label">Bonus</label>
                             <div class="input-group">
@@ -93,6 +101,7 @@
                             </div>
                             @error('incentive')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        @if($overtimeEnabled)
                         <div class="col-md-4">
                             <label class="form-label">Overtime</label>
                             <div class="input-group">
@@ -102,6 +111,27 @@
                                        value="{{ old('overtime_amount', '0.00') }}">
                             </div>
                             @error('overtime_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        @endif
+                        <div class="col-md-4">
+                            <label class="form-label">Late Penalty Override</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ currency_symbol() }}</span>
+                                <input type="number" name="late_deduction" step="0.01" min="0"
+                                       class="form-control @error('late_deduction') is-invalid @enderror"
+                                       value="{{ old('late_deduction') }}" placeholder="Auto">
+                            </div>
+                            @error('late_deduction')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Leave Penalty Override</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ currency_symbol() }}</span>
+                                <input type="number" name="leave_deduction" step="0.01" min="0"
+                                       class="form-control @error('leave_deduction') is-invalid @enderror"
+                                       value="{{ old('leave_deduction') }}" placeholder="Auto">
+                            </div>
+                            @error('leave_deduction')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
                             <label class="form-label">Note</label>

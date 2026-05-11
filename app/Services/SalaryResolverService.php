@@ -83,7 +83,7 @@ class SalaryResolverService
      *   'segments'           => array,   // breakdown (always 1 segment for non-prorated)
      * ]
      */
-    public function getSalaryForMonth(Employee $employee, int $month, int $year): array
+    public function getSalaryForMonth(Employee $employee, int $month, int $year, ?int $managementWorkingDays = null): array
     {
         $periodStart = Carbon::createFromDate($year, $month, 1)->startOfDay();
         $periodEnd   = $periodStart->copy()->endOfMonth();
@@ -103,7 +103,8 @@ class SalaryResolverService
         $hasMidChange = $records->count() > 1
             || Carbon::parse($records->first()->effective_from)->gt($periodStart);
 
-        $totalWorkingDays = $this->calendar->countWorkingDaysForEmployee($employee, $periodStart, $periodEnd);
+        $totalWorkingDays = $managementWorkingDays
+            ?? $this->calendar->countWorkingDaysForEmployee($employee, $periodStart, $periodEnd);
 
         // ── Simple modes (no split needed) ────────────────────────
         if (! $hasMidChange || $mode !== self::MODE_PRORATED) {
