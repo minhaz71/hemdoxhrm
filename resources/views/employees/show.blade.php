@@ -200,10 +200,10 @@
                 <div class="fs-3 fw-bold text-success mt-1">{{ currency($employee->base_salary) }}</div>
                 <small class="text-muted" style="font-size:.73rem;">per month</small>
 
-                @php $histories = $employee->salaryHistories()->limit(5)->get(); @endphp
+                @php $histories = $employee->salaryHistories()->where('status','approved')->orderByDesc('effective_from')->limit(4)->get(); @endphp
                 @if($histories->count() > 1)
                 <hr class="my-3">
-                <small class="text-muted d-block mb-2" style="font-size:.73rem;">Salary History</small>
+                <small class="text-muted d-block mb-2" style="font-size:.73rem;">Recent Changes</small>
                 @foreach($histories as $hist)
                 <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:.8rem;">
                     <span class="text-muted">
@@ -214,6 +214,13 @@
                 </div>
                 @endforeach
                 @endif
+                @can('viewAny', [App\Models\SalaryHistory::class, $employee])
+                <hr class="my-3">
+                <a href="{{ route('employees.salary-history.index', $employee) }}"
+                   class="btn btn-outline-success w-100 btn-sm">
+                    <i class="bi bi-clock-history me-1"></i> Full Salary History
+                </a>
+                @endcan
             </div>
             @endif
 

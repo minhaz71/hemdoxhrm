@@ -583,9 +583,73 @@
                                 <textarea id="payslip_footer_note" class="form-control" rows="2" maxlength="500">{{ $payroll['payslip_footer_note'] }}</textarea>
                                 <div class="form-text">Printed at the bottom of every payslip.</div>
                             </div>
+
+                            {{-- Salary change effect mode ──────────────────────── --}}
+                            <div class="col-12">
+                                <hr class="my-2">
+                                <label class="form-label fw-semibold">
+                                    Salary Change Effect Mode
+                                    <i class="bi bi-info-circle text-muted ms-1"
+                                       data-bs-toggle="tooltip"
+                                       title="Controls how a mid-month salary change affects payroll calculation."></i>
+                                </label>
+                                <div class="row g-2 mt-1">
+                                    @php
+                                        $modeVal = $payroll['salary_change_effect_mode'] ?? 'month_start';
+                                    @endphp
+
+                                    {{-- month_start --}}
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 salary-mode-card {{ $modeVal === 'month_start' ? 'border-primary bg-primary bg-opacity-10' : '' }}"
+                                             onclick="selectSalaryMode('month_start')" style="cursor:pointer;">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <input type="radio" name="_salary_mode_ui" id="mode_month_start"
+                                                       value="month_start" class="form-check-input mt-0"
+                                                       {{ $modeVal === 'month_start' ? 'checked' : '' }}>
+                                                <label class="fw-semibold mb-0" for="mode_month_start" style="cursor:pointer;">Month Start</label>
+                                            </div>
+                                            <small class="text-muted">Use the salary active on the <strong>1st</strong> of the month. A mid-month raise takes effect from the <em>next</em> month's payroll.</small>
+                                        </div>
+                                    </div>
+
+                                    {{-- month_end --}}
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 salary-mode-card {{ $modeVal === 'month_end' ? 'border-primary bg-primary bg-opacity-10' : '' }}"
+                                             onclick="selectSalaryMode('month_end')" style="cursor:pointer;">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <input type="radio" name="_salary_mode_ui" id="mode_month_end"
+                                                       value="month_end" class="form-check-input mt-0"
+                                                       {{ $modeVal === 'month_end' ? 'checked' : '' }}>
+                                                <label class="fw-semibold mb-0" for="mode_month_end" style="cursor:pointer;">Month End</label>
+                                            </div>
+                                            <small class="text-muted">Use the salary active on the <strong>last day</strong> of the month. A raise effective any day of the month applies to the full month.</small>
+                                        </div>
+                                    </div>
+
+                                    {{-- prorated --}}
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-3 h-100 salary-mode-card {{ $modeVal === 'prorated' ? 'border-primary bg-primary bg-opacity-10' : '' }}"
+                                             onclick="selectSalaryMode('prorated')" style="cursor:pointer;">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <input type="radio" name="_salary_mode_ui" id="mode_prorated"
+                                                       value="prorated" class="form-check-input mt-0"
+                                                       {{ $modeVal === 'prorated' ? 'checked' : '' }}>
+                                                <label class="fw-semibold mb-0" for="mode_prorated" style="cursor:pointer;">Prorated</label>
+                                                <span class="badge bg-success-subtle text-success" style="font-size:.65rem;">Recommended</span>
+                                            </div>
+                                            <small class="text-muted">Split the month at each salary boundary. Employee is paid the exact weighted amount for days at each rate.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="salary_change_effect_mode" value="{{ $modeVal }}">
+                                <div class="form-text mt-2">
+                                    <i class="bi bi-exclamation-triangle text-warning"></i>
+                                    Changing this setting affects <strong>future payroll generations only</strong>. Already-generated payrolls are not recalculated.
+                                </div>
+                            </div>
                         </div>
                         <div class="mt-4">
-                            <button class="btn btn-primary" onclick="saveSection('payroll', '/settings/payroll', ['pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note'])">
+                            <button class="btn btn-primary" onclick="saveSection('payroll', '/settings/payroll', ['pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note','salary_change_effect_mode'])">
                                 <i class="bi bi-check2 me-1"></i> Save Payroll Rules
                             </button>
                         </div>
@@ -1071,7 +1135,7 @@
         // ── Payroll save ───────────────────────────────────────────
         document.getElementById('btnSavePayroll')?.addEventListener('click', () =>
             saveSection('payroll', '/settings/payroll', [
-                'pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note',
+                'pay_cycle','tax_percentage','overtime_multiplier','payslip_footer_note','salary_change_effect_mode',
             ])
         );
 
@@ -1304,6 +1368,29 @@
                 }
             })
             .catch(() => showToast('Failed to update access.', false));
+        });
+
+        // ── Salary mode card selector ──────────────────────────────
+        window.selectSalaryMode = function (mode) {
+            document.getElementById('salary_change_effect_mode').value = mode;
+            document.querySelectorAll('input[name="_salary_mode_ui"]').forEach(r => {
+                r.checked = (r.value === mode);
+            });
+            document.querySelectorAll('.salary-mode-card').forEach(card => {
+                card.classList.toggle('border-primary', card.querySelector('input').value === mode);
+                card.classList.toggle('bg-primary', card.querySelector('input').value === mode);
+                card.classList.toggle('bg-opacity-10', card.querySelector('input').value === mode);
+            });
+        };
+
+        // Sync hidden input when radio clicked directly
+        document.querySelectorAll('input[name="_salary_mode_ui"]').forEach(r => {
+            r.addEventListener('change', () => window.selectSalaryMode(r.value));
+        });
+
+        // Activate Bootstrap tooltips in settings page
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
         });
 
     }); // end DOMContentLoaded

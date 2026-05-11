@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\SalaryResolverService;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Leave;
@@ -19,6 +20,7 @@ class PayrollService
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly HolidayCalendarService $calendar,
+        private readonly SalaryResolverService $salaryResolver,
     ) {}
 
     // ── Rate constants ────────────────────────────────────────────
@@ -244,12 +246,14 @@ class PayrollService
         // Total working days in the month (respects holidays + weekly offs for this employee)
         $workingDays = $this->calendar->countWorkingDaysForEmployee($employee, $periodStart, $periodEnd);
 
-        // ── Salary for THIS period from history ───────────────────
-        // Uses salary_histories to get the correct rate for the payroll month.
-        // Falls back to employee.base_salary if no history entry found.
-        $baseSalary = $employee->salaryForPeriod($month, $year);
+        // ── Salary resolution from history (mode-aware) ───────────
+        // Delegates to SalaryResolverService which applies the admin-configured
+        // mode: month_start | month_end | prorated.
+        // NEVER reads employees.base_salary — always from salary_histories.
+        $resolution = $this->salaryResolver->getSalaryForMonth($employee, $month, $year);
+        $baseSalary = $resolution['effective_salary'];
 
-        // Daily salary rate
+        // Daily salary rate (denominator = total working days for the month)
         $dailyRate = $workingDays > 0 ? $baseSalary / $workingDays : 0;
 
         // ── Attendance stats ───────────────────────────────────────
@@ -361,6 +365,13 @@ class PayrollService
             'late_days'         => $lateDays,
             'paid_leave_days'   => $paidLeaveDays,
             'unpaid_leave_days' => $unpaidLeaveDays,
+
+            // Salary resolution audit
+            'salary_resolution_mode' => $resolution['mode'],
+            'salary_had_mid_change'  => $resolution['has_mid_change'],
+            'salary_segments'        => count($resolution['segments']) > 1
+                ? $resolution['segments']
+                : null,
 
             'note'   => $adj['note'] ?? null,
             'status' => 'draft',

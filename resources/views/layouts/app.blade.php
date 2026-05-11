@@ -22,13 +22,15 @@
         /* Sidebar */
         #sidebar {
             width: 250px;
-            min-height: 100vh;
+            height: 100vh;
             background: var(--hrms-sidebar);
             position: fixed;
             top: 0; left: 0;
             z-index: 1000;
             transition: width 0.25s ease;
             overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
         }
         #sidebar .brand {
             padding: 20px 16px;
@@ -42,6 +44,22 @@
             white-space: nowrap;
         }
         #sidebar .brand span { color: #4e9af1; }
+        #sidebar .sidebar-menu-scroll {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px 0 18px;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,.25) transparent;
+        }
+        #sidebar .sidebar-menu-scroll::-webkit-scrollbar { width: 8px; }
+        #sidebar .sidebar-menu-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,.22);
+            border-radius: 999px;
+        }
+        #sidebar .sidebar-menu-scroll::-webkit-scrollbar-track { background: transparent; }
 
         #sidebar .nav-label {
             font-size: 0.68rem;
@@ -177,7 +195,7 @@
         @endif
     </div>
 
-    <div class="mt-2">
+    <div class="sidebar-menu-scroll">
         @include('partials.sidebar')
     </div>
 </nav>

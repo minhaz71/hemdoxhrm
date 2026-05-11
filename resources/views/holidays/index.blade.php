@@ -7,9 +7,14 @@
             <h5 class="fw-bold mb-0">Holiday Management</h5>
             <small class="text-muted">Company, branch, department, and employee-specific holidays</small>
         </div>
-        <a href="{{ route('holidays.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i> Add Holiday
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('holidays.import.index') }}" class="btn btn-outline-primary">
+                <i class="bi bi-upload me-1"></i> Import CSV
+            </a>
+            <a href="{{ route('holidays.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> Add Holiday
+            </a>
+        </div>
     </div>
 
     <div class="hrms-card p-3 mb-4">

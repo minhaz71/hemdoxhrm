@@ -20,11 +20,16 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeEducationController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\HolidayCsvImportController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SalaryHistoryController;
+use App\Http\Controllers\SalaryIncrementController;
+use App\Http\Controllers\PayrollRegenerationController;
+use App\Http\Controllers\IncrementEmailController;
 use App\Http\Controllers\WeeklyOffController;
 use Illuminate\Support\Facades\Route;
 
@@ -77,6 +82,20 @@ Route::middleware(['auth', 'role:admin,hr'])->group(function () {
     Route::patch('employees/{employee}/terminate', [EmployeeController::class, 'terminate'])
         ->name('employees.terminate');
 
+    // Salary History (admin + hr manage; approve is admin-only via policy)
+    Route::get('employees/{employee}/salary-history',
+        [SalaryHistoryController::class, 'index'])->name('employees.salary-history.index');
+    Route::post('employees/{employee}/salary-history',
+        [SalaryHistoryController::class, 'store'])->name('employees.salary-history.store');
+    Route::patch('employees/{employee}/salary-history/{salaryHistory}/approve',
+        [SalaryHistoryController::class, 'approve'])->name('employees.salary-history.approve');
+    Route::patch('employees/{employee}/salary-history/{salaryHistory}/reject',
+        [SalaryHistoryController::class, 'reject'])->name('employees.salary-history.reject');
+    Route::delete('employees/{employee}/salary-history/{salaryHistory}',
+        [SalaryHistoryController::class, 'destroy'])->name('employees.salary-history.destroy');
+    Route::get('salary-history',
+        [SalaryHistoryController::class, 'directory'])->name('salary-history.index');
+
     // Payroll
     Route::get('payroll',                  [PayrollController::class, 'index'])   ->name('payroll.index');
     Route::get('payroll/create',           [PayrollController::class, 'create'])  ->name('payroll.create');
@@ -87,12 +106,52 @@ Route::middleware(['auth', 'role:admin,hr'])->group(function () {
     Route::post('payroll/{payroll}/regenerate',  [PayrollController::class, 'regenerate'])  ->name('payroll.regenerate');
     Route::post('payroll/bulk-pay',              [PayrollController::class, 'bulkPay'])     ->name('payroll.bulk-pay');
 
+    Route::prefix('holidays/import')->name('holidays.import.')->group(function () {
+        Route::get('/', [HolidayCsvImportController::class, 'index'])->name('index');
+        Route::post('/', [HolidayCsvImportController::class, 'store'])
+            ->middleware('throttle:security-sensitive')
+            ->name('store');
+        Route::get('/sample', [HolidayCsvImportController::class, 'sample'])->name('sample');
+    });
     Route::resource('holidays', HolidayController::class)->except('destroy');
     Route::patch('holidays/{holiday}/toggle',       [HolidayController::class, 'toggle'])      ->name('holidays.toggle');
     Route::post('holidays/{holiday}/send-emails',   [HolidayController::class, 'sendEmails'])  ->name('holidays.send-emails');
     Route::post('holidays/{holiday}/retry-emails',  [HolidayController::class, 'retryEmails']) ->name('holidays.retry-emails');
     Route::post('weekly-offs/defaults', [WeeklyOffController::class, 'updateDefaults'])->name('weekly-offs.defaults');
     Route::resource('weekly-offs', WeeklyOffController::class)->except(['show']);
+
+    // Salary Increment Emails
+    Route::prefix('increment-emails')->name('increment-emails.')->group(function () {
+        Route::get('/',              [IncrementEmailController::class, 'index'])        ->name('index');
+        Route::post('/template',     [IncrementEmailController::class, 'templateSave'])->name('template.save');
+        Route::post('/preview',      [IncrementEmailController::class, 'preview'])     ->name('preview');
+        Route::post('/render',       [IncrementEmailController::class, 'render'])      ->name('render');
+        Route::post('/send',         [IncrementEmailController::class, 'send'])        ->name('send');
+        Route::get('/logs',          [IncrementEmailController::class, 'logs'])        ->name('logs');
+        Route::get('/logs/{log}',    [IncrementEmailController::class, 'logShow'])     ->name('log-show');
+    });
+
+    // Payroll Regeneration (admin UI + audit log)
+    Route::prefix('payroll-regeneration')->name('payroll-regeneration.')->group(function () {
+        Route::get('/',             [PayrollRegenerationController::class, 'index'])   ->name('index');
+        Route::post('/',            [PayrollRegenerationController::class, 'store'])   ->name('store');
+        Route::post('/bulk',        [PayrollRegenerationController::class, 'bulk'])    ->name('bulk');
+        Route::get('/logs',         [PayrollRegenerationController::class, 'logs'])    ->name('logs');
+        Route::get('/logs/{log}',   [PayrollRegenerationController::class, 'logShow'])->name('log-show');
+    });
+
+    // Salary Increments
+    Route::prefix('salary-increments')->name('salary-increments.')->group(function () {
+        Route::get('/',                              [SalaryIncrementController::class, 'index'])   ->name('index');
+        Route::get('/create',                        [SalaryIncrementController::class, 'create'])  ->name('create');
+        Route::post('/',                             [SalaryIncrementController::class, 'store'])   ->name('store');
+        Route::get('/approval',                      [SalaryIncrementController::class, 'approval'])->name('approval');
+        Route::get('/{salaryIncrement}',             [SalaryIncrementController::class, 'show'])    ->name('show');
+        Route::get('/{salaryIncrement}/edit',        [SalaryIncrementController::class, 'edit'])    ->name('edit');
+        Route::put('/{salaryIncrement}',             [SalaryIncrementController::class, 'update'])  ->name('update');
+        Route::post('/{salaryIncrement}/approve',    [SalaryIncrementController::class, 'approve']) ->name('approve');
+        Route::post('/{salaryIncrement}/reject',     [SalaryIncrementController::class, 'reject'])  ->name('reject');
+    });
 });
 
 // ── Admin + HR + Manager ──────────────────────────────────────────

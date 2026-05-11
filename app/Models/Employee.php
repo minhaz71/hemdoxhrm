@@ -109,6 +109,7 @@ class Employee extends Model
         $periodStart = Carbon::createFromDate($year, $month, 1)->toDateString();
 
         $history = $this->salaryHistories()
+            ->where('status', \App\Models\SalaryHistory::STATUS_APPROVED)
             ->where('effective_from', '<=', $periodStart)
             ->where(fn ($q) => $q->whereNull('effective_to')
                 ->orWhere('effective_to', '>=', $periodStart))

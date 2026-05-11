@@ -51,6 +51,15 @@ class AppServiceProvider extends ServiceProvider
         // anywhere HolidayCalendarService is type-hinted it can also be
         // resolved as AttendanceCalendarService when needed.
         $this->app->singleton(\App\Services\AttendanceCalendarService::class);
+
+        // SalaryResolverService is stateless beyond its setting/calendar deps.
+        $this->app->singleton(\App\Services\SalaryResolverService::class);
+
+        // PayrollRegenerationService — admin-only, stateless
+        $this->app->singleton(\App\Services\PayrollRegenerationService::class);
+
+        // IncrementEmailService — stateless mail dispatcher
+        $this->app->singleton(\App\Services\IncrementEmailService::class);
     }
 
     public function boot(): void
@@ -80,6 +89,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Payslip::class,    PayslipPolicy::class);
         Gate::policy(\App\Models\RegistrationInvitation::class, \App\Policies\InvitationPolicy::class);
         Gate::policy(\App\Models\PendingRegistration::class,    \App\Policies\PendingRegistrationPolicy::class);
+        Gate::policy(\App\Models\SalaryHistory::class,          \App\Policies\SalaryHistoryPolicy::class);
+        Gate::policy(\App\Models\PayrollRegenerationLog::class, \App\Policies\PayrollRegenerationLogPolicy::class);
 
         // ── Admin bypass for ALL gates ────────────────────────────────
         Gate::before(function (User $user, string $ability) {

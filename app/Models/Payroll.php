@@ -35,10 +35,16 @@ class Payroll extends Model
         'status',
         'paid_at',
         'paid_by',
+        // Salary resolution audit
+        'salary_resolution_mode',
+        'salary_had_mid_change',
+        'salary_segments',
     ];
 
     protected $casts = [
-        'paid_at'          => 'datetime',
+        'paid_at'               => 'datetime',
+        'salary_had_mid_change' => 'boolean',
+        'salary_segments'       => 'array',
         'base_salary'      => 'decimal:2',
         'bonus'            => 'decimal:2',
         'incentive'        => 'decimal:2',

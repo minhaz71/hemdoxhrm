@@ -70,10 +70,11 @@ class SettingsController extends Controller
 
             // Payroll
             'payroll' => [
-                'pay_cycle'           => $s->get('pay_cycle',           'monthly'),
-                'tax_percentage'      => $s->get('tax_percentage',      '0'),
-                'overtime_multiplier' => $s->get('overtime_multiplier', '1.5'),
-                'payslip_footer_note' => $s->get('payslip_footer_note', ''),
+                'pay_cycle'                  => $s->get('pay_cycle',                  'monthly'),
+                'tax_percentage'             => $s->get('tax_percentage',             '0'),
+                'overtime_multiplier'        => $s->get('overtime_multiplier',        '1.5'),
+                'payslip_footer_note'        => $s->get('payslip_footer_note',        ''),
+                'salary_change_effect_mode'  => $s->get('salary_change_effect_mode',  'month_start'),
             ],
 
             // SMTP — use service so password is decrypted then re-masked for display
@@ -260,10 +261,11 @@ class SettingsController extends Controller
     public function updatePayroll(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'pay_cycle'           => ['required', 'in:weekly,biweekly,monthly'],
-            'tax_percentage'      => ['required', 'numeric', 'min:0', 'max:100'],
-            'overtime_multiplier' => ['required', 'numeric', 'min:1', 'max:10'],
-            'payslip_footer_note' => ['nullable', 'string', 'max:500'],
+            'pay_cycle'                 => ['required', 'in:weekly,biweekly,monthly'],
+            'tax_percentage'            => ['required', 'numeric', 'min:0', 'max:100'],
+            'overtime_multiplier'       => ['required', 'numeric', 'min:1', 'max:10'],
+            'payslip_footer_note'       => ['nullable', 'string', 'max:500'],
+            'salary_change_effect_mode' => ['required', 'in:month_start,month_end,prorated'],
         ]);
 
         $this->settings->setMany($data, 'payroll');

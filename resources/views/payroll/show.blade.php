@@ -52,6 +52,68 @@
     <div class="row g-4">
         <div class="col-lg-8">
 
+            {{-- Salary Resolution Info --}}
+            @if($payroll->salary_resolution_mode)
+            <div class="hrms-card mb-4 border-start border-4 {{ $payroll->salary_had_mid_change ? 'border-warning' : 'border-secondary' }}">
+                <div class="p-3 d-flex align-items-start gap-2" style="font-size:.85rem;">
+                    <i class="bi bi-info-circle-fill {{ $payroll->salary_had_mid_change ? 'text-warning' : 'text-secondary' }} mt-1"></i>
+                    <div>
+                        <span class="fw-semibold">Salary Calculation Mode:</span>
+                        @php
+                            $modeLabels = [
+                                'month_start' => 'Month Start — salary on 1st of month',
+                                'month_end'   => 'Month End — salary on last day of month',
+                                'prorated'    => 'Prorated — weighted by days at each rate',
+                            ];
+                        @endphp
+                        {{ $modeLabels[$payroll->salary_resolution_mode] ?? $payroll->salary_resolution_mode }}
+                        @if($payroll->salary_had_mid_change)
+                            <span class="badge bg-warning text-dark ms-2">Mid-month salary change detected</span>
+                        @endif
+
+                        {{-- Prorated breakdown --}}
+                        @if($payroll->salary_segments && count($payroll->salary_segments) > 1)
+                        <div class="mt-2">
+                            <table class="table table-sm table-bordered mb-0" style="font-size:.8rem;max-width:520px;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Period</th>
+                                        <th>Salary Rate</th>
+                                        <th>Working Days</th>
+                                        <th>Daily Rate</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payroll->salary_segments as $seg)
+                                    <tr>
+                                        <td class="text-muted">
+                                            {{ \Carbon\Carbon::parse($seg['from'])->format('d M') }}
+                                            – {{ \Carbon\Carbon::parse($seg['to'])->format('d M Y') }}
+                                        </td>
+                                        <td>{{ currency($seg['salary']) }}</td>
+                                        <td class="text-center">{{ $seg['working_days'] }}</td>
+                                        <td>{{ currency($seg['daily_rate']) }}</td>
+                                        <td class="fw-semibold">{{ currency($seg['amount']) }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="2" class="fw-semibold">Prorated Base Salary</td>
+                                        <td class="text-center fw-semibold">{{ $payroll->working_days }}</td>
+                                        <td></td>
+                                        <td class="fw-bold text-success">{{ currency($payroll->base_salary) }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Earnings --}}
             <div class="hrms-card mb-4">
                 <div class="card-header text-success">

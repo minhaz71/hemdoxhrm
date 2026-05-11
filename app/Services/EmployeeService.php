@@ -49,14 +49,19 @@ class EmployeeService
 
             // Seed initial salary history
             SalaryHistory::create([
-                'employee_id'    => $employee->id,
-                'base_salary'    => $data['base_salary'] ?? 0,
-                'effective_from' => $employee->join_date
+                'employee_id'     => $employee->id,
+                'previous_salary' => null,
+                'base_salary'     => $data['base_salary'] ?? 0,
+                'salary_type'     => SalaryHistory::TYPE_INITIAL,
+                'effective_from'  => $employee->join_date
                     ? $employee->join_date->startOfMonth()->toDateString()
                     : now()->startOfMonth()->toDateString(),
-                'effective_to'   => null,
-                'changed_by'     => Auth::id(),
-                'note'           => 'Initial salary at hire.',
+                'effective_to'    => null,
+                'reason'          => 'Initial salary at hire.',
+                'changed_by'      => Auth::id(),
+                'approved_by'     => Auth::id(),
+                'status'          => SalaryHistory::STATUS_APPROVED,
+                'note'            => null,
             ]);
 
             if ($weeklyOffDays) {
@@ -84,22 +89,33 @@ class EmployeeService
                     ? Carbon::createFromFormat('Y-m', $salaryEffectiveFrom)->startOfMonth()
                     : now()->startOfMonth();
 
-                // Close the currently open history row (the one with effective_to = null)
+                // Close the currently open approved history row
                 SalaryHistory::where('employee_id', $employee->id)
+                    ->where('status', SalaryHistory::STATUS_APPROVED)
                     ->whereNull('effective_to')
                     ->update([
                         'effective_to' => $effectiveDate->copy()->subDay()->toDateString(),
                         'updated_at'   => now(),
                     ]);
 
-                // Open a new history row for the new salary
+                // Determine change type
+                $type = $newSalary > $oldSalary
+                    ? SalaryHistory::TYPE_INCREMENT
+                    : ($newSalary < $oldSalary ? SalaryHistory::TYPE_DECREMENT : SalaryHistory::TYPE_ADJUSTMENT);
+
+                // Open a new approved history row for the new salary
                 SalaryHistory::create([
-                    'employee_id'    => $employee->id,
-                    'base_salary'    => $newSalary,
-                    'effective_from' => $effectiveDate->toDateString(),
-                    'effective_to'   => null,
-                    'changed_by'     => Auth::id(),
-                    'note'           => "Salary updated from {$oldSalary} to {$newSalary}.",
+                    'employee_id'     => $employee->id,
+                    'previous_salary' => $oldSalary,
+                    'base_salary'     => $newSalary,
+                    'salary_type'     => $type,
+                    'effective_from'  => $effectiveDate->toDateString(),
+                    'effective_to'    => null,
+                    'reason'          => "Salary updated via employee edit.",
+                    'changed_by'      => Auth::id(),
+                    'approved_by'     => Auth::id(),
+                    'status'          => SalaryHistory::STATUS_APPROVED,
+                    'note'            => null,
                 ]);
             }
 
