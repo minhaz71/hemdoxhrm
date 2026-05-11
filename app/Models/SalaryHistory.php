@@ -189,16 +189,12 @@ class SalaryHistory extends Model
     {
         if (! $this->effective_from) return false;
 
+        $fromPeriod = (int) $this->effective_from->format('Ym');
+        $toPeriod = $this->effective_to ? (int) $this->effective_to->format('Ym') : null;
+
         return \App\Models\Payroll::where('employee_id', $this->employee_id)
-            ->where(function ($q) {
-                // Any payroll whose month/year falls within this record's effective range
-                $q->whereRaw("DATE_FORMAT(CONCAT(year,'-',LPAD(month,2,'0'),'-01'), '%Y-%m-%d') >= ?", [
-                    $this->effective_from->toDateString(),
-                ])->when($this->effective_to, fn ($q2) =>
-                    $q2->whereRaw("DATE_FORMAT(CONCAT(year,'-',LPAD(month,2,'0'),'-01'), '%Y-%m-%d') <= ?", [
-                        $this->effective_to->toDateString(),
-                    ])
-                );
-            })->exists();
+            ->whereRaw('(year * 100 + month) >= ?', [$fromPeriod])
+            ->when($toPeriod, fn ($query) => $query->whereRaw('(year * 100 + month) <= ?', [$toPeriod]))
+            ->exists();
     }
 }

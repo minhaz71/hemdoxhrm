@@ -18,8 +18,8 @@ class AdminDashboardService
 
         $attendance = Attendance::whereBetween('date', [$start->toDateString(), $end->toDateString()]);
 
-        $payrollStart = $start->copy()->startOfMonth()->toDateString();
-        $payrollEnd = $end->copy()->startOfMonth()->toDateString();
+        $payrollStart = (int) $start->copy()->startOfMonth()->format('Ym');
+        $payrollEnd = (int) $end->copy()->startOfMonth()->format('Ym');
 
         $stats = [
             'total_employees' => Employee::active()->count(),
@@ -29,10 +29,7 @@ class AdminDashboardService
                 ->where('end_date', '>=', $start->toDateString())
                 ->count(),
             'absent' => (clone $attendance)->where('status', 'absent')->count(),
-            'payroll_total' => Payroll::whereRaw("DATE_FORMAT(CONCAT(year,'-',LPAD(month,2,'0'),'-01'), '%Y-%m-%d') between ? and ?", [
-                    $payrollStart,
-                    $payrollEnd,
-                ])
+            'payroll_total' => Payroll::whereRaw('(year * 100 + month) between ? and ?', [$payrollStart, $payrollEnd])
                 ->sum('net_salary'),
             'payslips_issued' => Payslip::whereBetween('generated_at', [$start, $end->copy()->endOfDay()])->count(),
             'pending_leaves' => Leave::pending()
