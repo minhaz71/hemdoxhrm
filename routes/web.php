@@ -198,6 +198,7 @@ Route::middleware('auth')->group(function () {
     Route::get('leaves',            [LeaveController::class, 'index'])  ->name('leaves.index');
     Route::get('leaves/create',     [LeaveController::class, 'create']) ->name('leaves.create');
     Route::post('leaves',           [LeaveController::class, 'store'])  ->name('leaves.store');
+    Route::patch('leaves/{leave}/admin-update', [LeaveController::class, 'adminUpdate'])->name('leaves.admin-update');
     Route::get('leaves/{leave}',    [LeaveController::class, 'show'])   ->name('leaves.show');
     Route::delete('leaves/{leave}', [LeaveController::class, 'destroy'])->name('leaves.destroy');
     Route::get('leaves/balance',    [LeaveController::class, 'balance'])->name('leaves.balance');

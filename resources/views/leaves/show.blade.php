@@ -96,6 +96,65 @@
             @endif
             @endhasrole
 
+            @if (auth()->user()->isAdmin())
+            <div class="hrms-card p-4 mt-4" id="admin-correction">
+                <h6 class="fw-semibold mb-3 text-muted text-uppercase" style="font-size:.75rem;letter-spacing:.05em;">
+                    Admin Correction
+                </h6>
+                <form method="POST" action="{{ route('leaves.admin-update', $leave) }}" class="row g-3">
+                    @csrf
+                    @method('PATCH')
+
+                    <div class="col-md-4">
+                        <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                        <input type="date"
+                               name="start_date"
+                               value="{{ old('start_date', $leave->start_date->format('Y-m-d')) }}"
+                               class="form-control @error('start_date') is-invalid @enderror"
+                               required>
+                        @error('start_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">End Date <span class="text-danger">*</span></label>
+                        <input type="date"
+                               name="end_date"
+                               value="{{ old('end_date', $leave->end_date->format('Y-m-d')) }}"
+                               class="form-control @error('end_date') is-invalid @enderror"
+                               required>
+                        @error('end_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Status <span class="text-danger">*</span></label>
+                        <select name="status" class="form-select @error('status') is-invalid @enderror" required>
+                            <option value="pending" {{ old('status', $leave->status) === 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="approved" {{ old('status', $leave->status) === 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ old('status', $leave->status) === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        </select>
+                        @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Rejection Reason</label>
+                        <textarea name="rejection_note"
+                                  class="form-control @error('rejection_note') is-invalid @enderror"
+                                  rows="3"
+                                  placeholder="Required when status is rejected">{{ old('rejection_note', $leave->rejection_note) }}</textarea>
+                        @error('rejection_note')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit"
+                                class="btn btn-primary"
+                                onclick="return confirm('Update this leave record as admin?')">
+                            <i class="bi bi-shield-check me-1"></i> Update Leave
+                        </button>
+                    </div>
+                </form>
+            </div>
+            @endif
+
         </div>
 
         {{-- Sidebar: Status + Balance --}}
@@ -146,30 +205,30 @@
             </div>
         </div>
     </div>
-</x-app-layout>
 
-{{-- Reject Modal --}}
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="{{ route('leaves.action', $leave) }}">
-                @csrf @method('PATCH')
-                <input type="hidden" name="action" value="rejected">
-                <div class="modal-header border-0 pb-0">
-                    <h6 class="modal-title fw-bold">Reject Leave</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label">Reason <span class="text-danger">*</span></label>
-                    <textarea name="rejection_note" class="form-control @error('rejection_note') is-invalid @enderror"
-                              rows="3" placeholder="Reason for rejection..." required>{{ old('rejection_note') }}</textarea>
-                    @error('rejection_note')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Reject</button>
-                </div>
-            </form>
+    {{-- Reject Modal --}}
+    <div class="modal fade" id="rejectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ route('leaves.action', $leave) }}">
+                    @csrf @method('PATCH')
+                    <input type="hidden" name="action" value="rejected">
+                    <div class="modal-header border-0 pb-0">
+                        <h6 class="modal-title fw-bold">Reject Leave</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label">Reason <span class="text-danger">*</span></label>
+                        <textarea name="rejection_note" class="form-control @error('rejection_note') is-invalid @enderror"
+                                  rows="3" placeholder="Reason for rejection..." required>{{ old('rejection_note') }}</textarea>
+                        @error('rejection_note')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+</x-app-layout>

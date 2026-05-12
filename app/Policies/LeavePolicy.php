@@ -32,6 +32,11 @@ class LeavePolicy
         return $this->permissionService->check($user, 'leave.approve');
     }
 
+    public function adminUpdate(User $user, Leave $leave): bool
+    {
+        return $user->isAdmin();
+    }
+
     public function delete(User $user, Leave $leave): bool
     {
         if ($this->permissionService->check($user, 'leave.delete')) return true;

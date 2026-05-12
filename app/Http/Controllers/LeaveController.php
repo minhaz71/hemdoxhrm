@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Leave\ApplyLeaveRequest;
+use App\Http\Requests\Leave\AdminUpdateLeaveRequest;
 use App\Http\Requests\Leave\UpdateLeaveRequest;
 use App\Models\Employee;
 use App\Models\Leave;
@@ -99,6 +100,18 @@ class LeaveController extends Controller
         }
 
         return redirect()->route('leaves.index')->with('success', $msg);
+    }
+
+    // PATCH /leaves/{leave}/admin-update — admin-only correction for status/dates
+    public function adminUpdate(AdminUpdateLeaveRequest $request, Leave $leave)
+    {
+        $this->authorize('adminUpdate', $leave);
+
+        $this->leaveService->adminUpdate($leave, $request->validated(), $request->user());
+
+        return redirect()
+            ->route('leaves.show', $leave)
+            ->with('success', 'Leave application updated by admin.');
     }
 
     // DELETE /leaves/{leave} — employee cancels pending leave

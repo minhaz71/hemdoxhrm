@@ -103,17 +103,25 @@
                                    class="btn btn-sm btn-outline-secondary" title="View">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @if (auth()->user()->isAdmin())
+                                <a href="{{ route('leaves.show', $leave) }}#admin-correction"
+                                   class="btn btn-sm btn-outline-primary" title="Admin correction">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                @endif
                                 @hasrole('admin', 'hr', 'manager')
                                     @if ($leave->status === 'pending')
-                                    <button class="btn btn-sm btn-outline-success"
-                                            onclick="quickAction({{ $leave->id }}, 'approved')"
-                                            title="Approve">
-                                        <i class="bi bi-check2"></i>
-                                    </button>
+                                    <form method="POST" action="{{ route('leaves.action', $leave) }}"
+                                          onsubmit="return confirm('Approve this leave?')">
+                                        @csrf @method('PATCH')
+                                        <input type="hidden" name="action" value="approved">
+                                        <button class="btn btn-sm btn-outline-success" title="Approve">
+                                            <i class="bi bi-check2"></i>
+                                        </button>
+                                    </form>
                                     <button class="btn btn-sm btn-outline-danger"
                                             data-bs-toggle="modal"
-                                            data-bs-target="#rejectModal"
-                                            data-leave-id="{{ $leave->id }}"
+                                            data-bs-target="#rejectModal{{ $leave->id }}"
                                             title="Reject">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
@@ -146,55 +154,34 @@
         <div class="p-3 border-top">{{ $leaves->links('pagination::bootstrap-5') }}</div>
         @endif
     </div>
-</x-app-layout>
 
-{{-- Quick Approve Form (hidden) --}}
-<form id="approveForm" method="POST" style="display:none;">
-    @csrf @method('PATCH')
-    <input type="hidden" name="action" value="approved">
-</form>
-
-{{-- Reject Modal --}}
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="rejectForm" method="POST">
-                @csrf @method('PATCH')
-                <input type="hidden" name="action" value="rejected">
-                <div class="modal-header border-0 pb-0">
-                    <h6 class="modal-title fw-bold">Reject Leave Application</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    @hasrole('admin', 'hr', 'manager')
+    @foreach ($leaves as $leave)
+        @if ($leave->status === 'pending')
+        <div class="modal fade" id="rejectModal{{ $leave->id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST" action="{{ route('leaves.action', $leave) }}">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="action" value="rejected">
+                        <div class="modal-header border-0 pb-0">
+                            <h6 class="modal-title fw-bold">Reject Leave Application</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label class="form-label">Reason for Rejection <span class="text-danger">*</span></label>
+                            <textarea name="rejection_note" class="form-control" rows="3"
+                                      placeholder="Provide a reason..." required></textarea>
+                        </div>
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">Reject Leave</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="modal-body">
-                    <label class="form-label">Reason for Rejection <span class="text-danger">*</span></label>
-                    <textarea name="rejection_note" class="form-control" rows="3"
-                              placeholder="Provide a reason..." required></textarea>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Reject Leave</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
-</div>
-
-@push('scripts')
-<script>
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-
-function quickAction(leaveId, action) {
-    if (action === 'approved' && !confirm('Approve this leave?')) return;
-    const form = document.getElementById('approveForm');
-    form.action = `/leaves/${leaveId}/action`;
-    form.submit();
-}
-
-// Populate reject modal with leave ID
-document.getElementById('rejectModal')?.addEventListener('show.bs.modal', function (e) {
-    const btn     = e.relatedTarget;
-    const leaveId = btn.dataset.leaveId;
-    document.getElementById('rejectForm').action = `/leaves/${leaveId}/action`;
-});
-</script>
-@endpush
+        @endif
+    @endforeach
+    @endhasrole
+</x-app-layout>

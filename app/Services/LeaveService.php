@@ -13,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class LeaveService
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly SecurityAuditService $audit,
+    ) {}
 
     // ── Apply ─────────────────────────────────────────────────────
 
@@ -89,6 +92,62 @@ class LeaveService
 
         $fresh = $leave->fresh(['employee.user', 'leaveType', 'approvedBy']);
         $this->notifications->leaveRejected($fresh);
+
+        return $fresh;
+    }
+
+    // ── Admin correction ──────────────────────────────────────────
+
+    public function adminUpdate(Leave $leave, array $data, User $admin): Leave
+    {
+        if (! $admin->isAdmin()) {
+            throw ValidationException::withMessages([
+                'status' => 'Only admin can correct leave status or dates.',
+            ]);
+        }
+
+        $startDate = Carbon::parse($data['start_date']);
+        $endDate = Carbon::parse($data['end_date']);
+        $status = $data['status'];
+        $before = $leave->only(['start_date', 'end_date', 'total_days', 'status', 'rejection_note', 'approved_by']);
+        $previousStatus = $before['status'];
+
+        if (in_array($status, ['pending', 'approved'], true)) {
+            $this->guardOverlap($leave->employee_id, $data['start_date'], $data['end_date'], $leave->id);
+        }
+
+        $payload = [
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'total_days' => $this->countWorkingDays($startDate, $endDate),
+            'status' => $status,
+            'rejection_note' => $status === 'rejected' ? ($data['rejection_note'] ?? null) : null,
+        ];
+
+        if ($status === 'pending') {
+            $payload['approved_by'] = null;
+            $payload['actioned_at'] = null;
+        } else {
+            $payload['approved_by'] = $admin->id;
+            $payload['actioned_at'] = now();
+        }
+
+        $leave->update($payload);
+
+        $fresh = $leave->fresh(['employee.user', 'leaveType', 'approvedBy']);
+
+        $this->audit->warning('leave.admin_corrected', request(), $admin, $fresh, [
+            'before' => $before,
+            'after' => $fresh->only(['start_date', 'end_date', 'total_days', 'status', 'rejection_note', 'approved_by']),
+        ]);
+
+        if ($previousStatus !== $status && $status === 'approved') {
+            $this->notifications->leaveApproved($fresh);
+        }
+
+        if ($previousStatus !== $status && $status === 'rejected') {
+            $this->notifications->leaveRejected($fresh);
+        }
 
         return $fresh;
     }
@@ -181,10 +240,11 @@ class LeaveService
         return max(1, $days);
     }
 
-    private function guardOverlap(int $employeeId, string $start, string $end): void
+    private function guardOverlap(int $employeeId, string $start, string $end, ?int $ignoreLeaveId = null): void
     {
         $overlap = Leave::forEmployee($employeeId)
             ->whereIn('status', ['pending', 'approved'])
+            ->when($ignoreLeaveId, fn ($q) => $q->whereKeyNot($ignoreLeaveId))
             ->where(function ($q) use ($start, $end) {
                 $q->whereBetween('start_date', [$start, $end])
                   ->orWhereBetween('end_date', [$start, $end])
